@@ -48,10 +48,10 @@ export class PhotoBoard extends Component {
       >
         {lists.map(photoList => (
           <PhotoList
-            key={photoList.title || photoList.month}
+            key={photoList.title || photoList.day}
             title={
               photoList.title ||
-              (photoList.month ? f(photoList.month, 'MMMM YYYY') : '')
+              (photoList.day ? f(photoList.day, 'DD MMMM YYYY') : '')
             }
             photos={photoList.photos}
             selected={selected}
