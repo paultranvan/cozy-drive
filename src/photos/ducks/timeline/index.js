@@ -36,30 +36,29 @@ const TIMELINE_MUTATIONS = query => ({
     })
 })
 
-const getPhotosByMonth = photos => {
+const getPhotosByDay = photos => {
   let sections = {}
   photos.forEach(p => {
     const datetime =
       p.metadata && p.metadata.datetime ? p.metadata.datetime : Date.now()
     // here we want to get an object whose keys are months in a l10able format
     // so we only keep the year and month part of the date
-    const month = datetime.slice(0, 7) + '-01T00:00'
-    /* istanbul ignore else */
-    if (!sections.hasOwnProperty(month)) {
-      sections[month] = []
+    const day = datetime.slice(0, 10)
+    if (!sections.hasOwnProperty(day)) {
+      sections[day] = []
     }
-    sections[month].push(p)
+    sections[day].push(p)
   })
-  // we need to sort the months here because when new photos are uploaded, they
-  // are inserted on top of the list, and months can become unordered
-  const sortedMonths = Object.keys(sections)
+  // we need to sort the days here because when new photos are uploaded, they
+  // are inserted on top of the list, and days can become unordered
+  const sortedDays = Object.keys(sections)
     .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
     .reverse()
 
-  return sortedMonths.map(month => {
+  return sortedDays.map(day => {
     return {
-      month,
-      photos: sections[month]
+      day,
+      photos: sections[day]
     }
   })
 }
@@ -68,7 +67,7 @@ export default props => (
   <Query query={TIMELINE_QUERY} as={TIMELINE} mutations={TIMELINE_MUTATIONS}>
     {({ data, ...result }, mutations) => (
       <Timeline
-        lists={data ? getPhotosByMonth(data) : []}
+        lists={data ? getPhotosByDay(data) : []}
         data={data}
         {...mutations}
         {...result}
@@ -82,7 +81,7 @@ export const TimelineBoard = ({ selection, ...props }) => (
   <Query query={TIMELINE_QUERY}>
     {({ data, ...result }) => (
       <PhotoBoard
-        lists={data ? getPhotosByMonth(data) : []}
+        lists={data ? getPhotosByDay(data) : []}
         photosContext="timeline"
         onPhotoToggle={selection.toggle}
         onPhotosSelect={selection.select}
