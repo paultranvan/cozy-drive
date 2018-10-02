@@ -9,7 +9,7 @@ import CozyClient, { CozyProvider } from 'cozy-client'
 import { I18n } from 'cozy-ui/react/I18n'
 import { getQueryParameter } from 'react-cozy-helpers'
 import upgradePouchDatabase from 'drive/lib/upgradePouchDatabase'
-
+import { schema } from '../doctypes'
 if (__DEVELOPMENT__) {
   // Enables React dev tools for Preact
   // Cannot use import as we are in a condition
@@ -30,7 +30,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const client = new CozyClient({
     uri: cozyUrl,
-    token: data.cozyToken
+    token: data.cozyToken,
+    schema
   })
 
   cozy.client.init({
