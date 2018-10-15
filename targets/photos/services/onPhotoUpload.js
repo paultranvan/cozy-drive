@@ -1,6 +1,7 @@
 import {log, cozyClient} from 'cozy-konnector-libs'
 import {computeTemporalEps, computeSpatialEps, computeSpatioTemporalScaledEps, runOptics} from '../../../src/photos/ducks/clustering/services'
 import Metrics from '../../../src/photos/ducks/clustering/metrics'
+import {gradientClustering} from '../../../src/photos/ducks/clustering/gradient'
 
 //import { FILES_DOCTYPE } from '../../../src/photos/ducks/timeline/index'
 //const { cozyClient } = require('cozy-konnector-libs')
@@ -70,18 +71,24 @@ const clusterPhotos = async (files) => {
   ]
 
   const metric = new Metrics()
-  metric.epsTemporal = computeTemporalEps(dataset, metric, 100)
-  metric.epsSpatial = computeSpatialEps(dataset, metric, 100)
+  const epsTemporal = computeTemporalEps(dataset, metric, 100)
+  const epsSpatial = computeSpatialEps(dataset, metric, 100)
 
-  if (metric.epsTemporal < MIN_TEMPORAL_EPS) {
+  if (epsTemporal < MIN_TEMPORAL_EPS) {
     metric.epsTemporal = MIN_TEMPORAL_EPS
-  } else if (metric.epsSptial < MIN_SPATIAL_EPS) {
+  } else if (epsSpatial < MIN_SPATIAL_EPS) {
     metric.epsSpatial = MIN_SPATIAL_EPS
   }
 
   const eps = computeSpatioTemporalScaledEps(dataset, metric, 100)
-
-  runOptics(dataset, 1000, metric.temporal)
+  console.log('eps temporal : ', metric.epsTemporal)
+  console.log('eps spatial : ', metric.epsSpatial)
+  console.log('eps spatio temporal : ', eps)
+  const results = runOptics(dataset, 1000, metric.spatial)
+  const ordering = results.map(res => res[0])
+  const reachabilities = results.map((res, i, results) => results[ordering[i]])
+  const clusters = gradientClustering(dataset, reachabilities, ordering, 15, eps * 2)
+  console.log('clusters : ', clusters)
 
   //TODO write albumswith auto:true
   //TODO write relationships
