@@ -1,5 +1,5 @@
 import { kdTree } from './kdTree'
-import { diffPairWise, standardDeviation, mean, quantile } from './stats'
+import { diffPairWise, standardDeviation, mean, quantile } from '../maths'
 
 export default class KNN {
   /**

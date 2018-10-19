@@ -26,13 +26,16 @@ const gradientDeterminant = (xR, yR, zR) => {
 */
 const lonelyPoint = (xData, yData, xR, yR, zR) => {
   if (xR === MAX_VALUE && yR < MAX_VALUE && zR === MAX_VALUE) {
-    const xTime = new Date(xData.date).getTime()
-    const yTime = new Date(yData.date).getTime()
+    const xDate = new Date(xData.date)
+    const yDate = new Date(yData.date)
     /* We impose 2 arbitrary conditions to force a rupture:
         - The 2 events being on 2 distincts days
         - 8 hours or more elapsed
     */
-    if (xTime.getDate() != yTime.getDate() && yTime - xTime > 8) {
+    if (
+      xDate.getDate() != yDate.getDate() &&
+      yDate.getTime() - xDate.getTime() > 8
+    ) {
       return true
     }
   }
@@ -85,6 +88,65 @@ const decreasingSlope = (yR, zR, a) => {
   return false
 }
 
+const mergeClusters = (clusters, currIndex, nextIndex) => {
+  const newCluster = clusters[currIndex]
+    .concat(clusters[nextIndex])
+    .sort((a, b) => a - b)
+  clusters.splice(nextIndex, 1)
+  return newCluster
+}
+
+const respectOrder = (clusters, curr) => {
+  const nextLabel = curr.label + 1
+
+  // No need to evaluate the last cluster
+  if (curr.clusterIndex === clusters.length - 1) {
+    return true
+  }
+
+  // The current element is not the highest in the cluster:
+  // the next label should be in the same cluster
+  if (curr.labelIndex !== Math.max(...curr.cluster)) {
+    return curr.cluster.includes(nextLabel)
+  }
+  // The next element should be in the next cluster, whatever the position
+  return clusters[curr.clusterIndex + 1].includes(nextLabel)
+}
+
+/*
+  The order in the clusters w.r.t. the data might not be respected as we try
+  to group data with non-ordered attributes, such as GPS. Thus, we re-order the
+  clusters and try to merge non-ordered clusters.
+*/
+// TODO test me on real data wit GPS
+const reorganizeClusters = clusters => {
+  for (let i = 0; i < clusters.length - 1; i++) {
+    for (let j = 0; j < clusters[i].length; j++) {
+      const curr = {
+        label: clusters[i][j],
+        labelIndex: j,
+        cluster: clusters[i],
+        clusterIndex: i
+      }
+      if (!respectOrder(clusters, curr)) {
+        clusters[i] = mergeClusters(clusters, i, i + 1)
+      }
+    }
+  }
+  return clusters
+}
+
+const clusterizeData = (data, clusters) => {
+  const newClusters = reorganizeClusters(clusters)
+  let cpt = 0
+  const results = newClusters.map(clu => {
+    return clu.map(c => {
+      return data[cpt++]
+    })
+  })
+  return results
+}
+
 /*
   Extracts clusters from the reachability diagram by using the gradient method.
 
@@ -102,22 +164,16 @@ const decreasingSlope = (yR, zR, a) => {
     Return:
         set_of_clusters: [list] a list of found clusters
             - note: individual cluster is just a list of point indices belonging to a specific cluster
-
 */
-export const gradientClustering = (
-  data,
-  reachabilities,
-  ordering,
-  angle,
-  max_bound
-) => {
+export const gradientClustering = (data, optics, angle, max_bound) => {
+  let reachabilities = optics.reachabilities
+  const ordering = optics.ordering
+
   // Replace undefined by MAX_VALUE
-  reachabilities.map(r => (r === undefined ? MAX_VALUE : r))
+  reachabilities = reachabilities.map(r => (r === undefined ? MAX_VALUE : r))
 
-  const a = Math.cos(toRadians(angle))
-
-  const clusters = []
-  const curr_cluster = [0]
+  let clusters = []
+  let curr_cluster = [0]
 
   for (let i = 1; i < reachabilities.length - 1; i++) {
     const prevR = reachabilities[i - 1]
@@ -143,8 +199,8 @@ export const gradientClustering = (
 
     // Special conditions: if any of them is satisfied, save current cluster
     const lonelyPt = lonelyPoint(data[i - 1], data[i], prevR, currR, nextR)
-    const incrSlope = increasingSlope(prevR, currR, nextR, a)
-    const decrSlope = decreasingSlope(currR, nextR, a)
+    const incrSlope = increasingSlope(prevR, currR, nextR, angle)
+    const decrSlope = decreasingSlope(currR, nextR, angle)
 
     if (lonelyPt || incrSlope || decrSlope) {
       clusters.push(curr_cluster)
@@ -152,10 +208,10 @@ export const gradientClustering = (
     }
 
     // The current point is an inflection point
-    if (inflectionIndex(prevR, currR, nextR) > a) {
+    if (inflectionIndex(prevR, currR, nextR) > angle) {
       // The next vector deviates to the left, marking an endpoint
       if (gradientDeterminant(prevR, currR, nextR) < 0) {
-        curr_cluster.push([ordering[i]])
+        curr_cluster.push(ordering[i])
         const diff = nextR - currR
         // If the reachability of the next point is higher, it is a new cluster
         if (diff > 0) {
@@ -171,21 +227,31 @@ export const gradientClustering = (
       }
     } else {
       // The current point is not an inflection: just add it to the current cluster
-      curr_cluster.push([ordering[i]])
+      curr_cluster.push(ordering[i])
     }
   }
 
   const lastPt = reachabilities[reachabilities.length - 1]
+  const lastOrd = ordering[ordering.length - 1]
   // The last point is not noise: add it to the current cluster if not empty
   if (curr_cluster.length > 0 && lastPt < max_bound) {
-    curr_cluster.push(lastPt)
+    curr_cluster.push(lastOrd)
     clusters.push(curr_cluster)
   } else {
     // The last point is a single cluster
     if (curr_cluster.length > 0) {
       clusters.push(curr_cluster)
     }
-    clusters.push([lastPt])
+    clusters.push([lastOrd])
   }
-  return clusters
+  console.log('ordering : ', ordering)
+  return clusterizeData(data, clusters)
+}
+
+/* Compute the gradient angle based on the eps and a k multiplicator coefficient */
+export const gradientAngle = (eps, k) => {
+  if (k === undefined) {
+    k = 1
+  }
+  return Math.cos(2 * Math.atan(1 / (eps * k)))
 }
