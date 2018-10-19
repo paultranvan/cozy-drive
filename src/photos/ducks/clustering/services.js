@@ -5,8 +5,13 @@ export const runOptics = (dataset, eps, metric) => {
   const optics = new OPTICS()
   const clusters = optics.run(dataset, eps, 1, metric)
   const plot = optics.getReachabilityPlot()
-  console.log(plot)
-  return plot
+  const ordering = plot.map(p => p[0])
+  const reachabilities = plot.map((p, i, plot) => plot[ordering[i]][1])
+  const result = {
+    ordering: ordering,
+    reachabilities: reachabilities
+  }
+  return result
 }
 
 export const computeTemporalEps = (dataset, metric, percentile) => {
@@ -50,6 +55,31 @@ export const computeSpatioTemporalScaledEps = (dataset, metric, percentile) => {
   return eps
 }
 
+export const computeSpatioTemporalMaxNormalizedEps = (
+  dataset,
+  metric,
+  percentile
+) => {
+  let eps = 0
+  if (metric.epsTemporal !== undefined && metric.epsSpatial !== undefined) {
+    eps = computeEps(
+      dataset,
+      ['date', 'lat', 'lon'],
+      metric.spatioTemporalMaxNormalized,
+      percentile
+    )
+  } else {
+    eps = computeEps(
+      dataset,
+      ['date', 'lat', 'lon'],
+      metric.spatioTemporal,
+      percentile
+    )
+  }
+  metric.eps = eps
+  return eps
+}
+
 const computeEps = (dataset, dimensions, metric, percentile) => {
   // Compute the k-nearest neighbors on the data
   const knn = new KNN(dataset, metric, dimensions)
@@ -72,3 +102,7 @@ const computeEps = (dataset, dimensions, metric, percentile) => {
   //return (epsSlope + epsCurv) / 2
   return epsSlope
 }
+
+/*export async const createAutoAlbums = (clusters) => {
+
+}*/

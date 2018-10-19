@@ -1,3 +1,5 @@
+import { toRadians } from './maths'
+
 export default class Metrics {
   constructor() {
     // TODO not possible to declare class var in ES6... Do we need a const file ?
@@ -13,6 +15,9 @@ export default class Metrics {
     this.spatial = this.spatial.bind(this)
     this.spatioTemporal = this.spatioTemporal.bind(this)
     this.spatioTemporalScaled = this.spatioTemporalScaled.bind(this)
+    this.spatioTemporalMaxNormalized = this.spatioTemporalMaxNormalized.bind(
+      this
+    )
   }
 
   spatial(p1, p2) {
@@ -24,6 +29,9 @@ export default class Metrics {
   }
 
   spatioTemporal(p1, p2) {
+    /*
+      Function giving a mix-metric for spatio temporal data
+    */
     return 0.5 * this.temporal(p1, p2) + 0.5 * this.spatial(p1, p2)
   }
 
@@ -37,15 +45,26 @@ export default class Metrics {
     const r = this.epsTemporal / this.epsSpatial
     return (this.temporal(p1, p2) + this.spatial(p1, p2) * r) / 2
   }
+
+  spatioTemporalMaxNormalized(p1, p2) {
+    /*
+      Function giving the max between the normalized spatial and normalized
+      temporal distance. It can thus adapt to use case where GPS coords are
+      not available
+    */
+    const temporalNorm = this.temporal(p1, p2) / this.epsTemporal
+    const spatialNorm = this.spatial(p1, p2) / this.epsSpatial
+    return Math.max(temporalNorm, spatialNorm)
+  }
 }
 
 const geodesicDistance = (x1, x2) => {
   // Convert to radians
-  const lon1 = x1.lon * (Math.PI / 180)
-  const lat1 = x1.lat * (Math.PI / 180)
+  const lon1 = toRadians(x1.lon)
+  const lat1 = toRadians(x1.lat)
 
-  const lon2 = x2.lon * (Math.PI / 180)
-  const lat2 = x2.lat * (Math.PI / 180)
+  const lon2 = toRadians(x2.lon)
+  const lat2 = toRadians(x2.lat)
 
   const dlon = lon2 - lon1
   const dlat = lat2 - lat1
