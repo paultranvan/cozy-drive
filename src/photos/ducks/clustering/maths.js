@@ -38,3 +38,12 @@ export const quantile = (sortedArray, percentile) => {
     return sortedArray[i] + (sortedArray[i + 1] - sortedArray[i]) * fraction
   }
 }
+
+// TODO: useful ?
+export const toDegrees = (radians) => {
+    return radians * 180 / Math.PI
+}
+
+export const toRadians = (degrees) => {
+    return degrees * Math.PI / 180
+}

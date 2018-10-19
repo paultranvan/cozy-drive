@@ -1,7 +1,7 @@
 import {log, cozyClient} from 'cozy-konnector-libs'
 import {computeTemporalEps, computeSpatialEps, computeSpatioTemporalScaledEps, runOptics} from '../../../src/photos/ducks/clustering/services'
 import Metrics from '../../../src/photos/ducks/clustering/metrics'
-import {gradientClustering} from '../../../src/photos/ducks/clustering/gradient'
+import { gradientClustering, gradientAngle } from '../../../src/photos/ducks/clustering/gradient'
 
 //import { FILES_DOCTYPE } from '../../../src/photos/ducks/timeline/index'
 //const { cozyClient } = require('cozy-konnector-libs')
@@ -22,7 +22,7 @@ process.on('unhandledRejection', err => {
 const extractInfo = async (files) => {
   const photos = files.map(file => {
     const photo = {
-      file: file._id,
+      id: file._id,
       name: file.name
     }
     if (file.metadata) {
@@ -84,11 +84,14 @@ const clusterPhotos = async (files) => {
   console.log('eps temporal : ', metric.epsTemporal)
   console.log('eps spatial : ', metric.epsSpatial)
   console.log('eps spatio temporal : ', eps)
-  const results = runOptics(dataset, 1000, metric.spatial)
-  const ordering = results.map(res => res[0])
-  const reachabilities = results.map((res, i, results) => results[ordering[i]])
-  const clusters = gradientClustering(dataset, reachabilities, ordering, 15, eps * 2)
-  console.log('clusters : ', clusters)
+  const maxBound = 2 * eps
+  const optics = runOptics(dataset, 1000, metric.spatial)
+  const angle = gradientAngle(eps, 1)
+  const clusters = gradientClustering(dataset, optics, angle, 1000)
+
+  console.log('labels : ', clusters)
+
+  return clusters
 
   //TODO write albumswith auto:true
   //TODO write relationships
@@ -111,7 +114,9 @@ const onPhotoUpload = async () => {
   log('info', `new last seq: ${newLastSeq}`)
   //log('info', JSON.stringify(files))
 
-  await clusterPhotos(files)
+  const clusteredFiles = await clusterPhotos(files)
+
+
 }
 
 onPhotoUpload()
