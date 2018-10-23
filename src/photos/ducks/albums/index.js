@@ -11,6 +11,8 @@ import Alerter from 'cozy-ui/react/Alerter'
 export const DOCTYPE = 'io.cozy.photos.albums'
 
 const ALBUMS_QUERY = client => client.all(DOCTYPE).include(['photos'])
+export const AUTO_ALBUMS_QUERY = client =>
+  client.find(DOCTYPE).where({ auto: true })
 
 const addPhotos = async (album, photos) => {
   try {
@@ -165,4 +167,24 @@ export const belongsToAlbums = photos => {
     }
   }
   return false
+}
+
+export const getReferencedAutoAlbum = (albums, photo) => {
+  if (
+    photo.relationships &&
+    photo.relationships.referenced_by &&
+    photo.relationships.referenced_by.data &&
+    photo.relationships.referenced_by.data.length > 0
+  ) {
+    const refs = photo.relationships.referenced_by.data
+    for (const ref of refs) {
+      if (ref.type === DOCTYPE) {
+        const album = albums.find(album => album.id === ref.id)
+        if (album) {
+          return album
+        }
+      }
+    }
+  }
+  return null
 }
