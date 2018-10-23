@@ -7,8 +7,6 @@ export default class Metrics {
     const MIN_SPATIAL_EPS = 3
     const MIN_EPS = 1
 
-    this.epsTemporal = MIN_TEMPORAL_EPS
-    this.epsSpatial = MIN_SPATIAL_EPS
     this.eps = MIN_EPS
 
     this.temporal = this.temporal.bind(this)
