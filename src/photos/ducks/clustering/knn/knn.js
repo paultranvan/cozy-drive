@@ -8,8 +8,8 @@ export default class KNN {
    * @param {Array} dimensions - Dimensions to consider in the dataset
    */
   constructor(dataset, metric, dimensions) {
-    this.kdTree = new kdTree(dataset, metric, dimensions)
-    this.points = dataset
+    this.points = dataset.slice()
+    this.kdTree = new kdTree(this.points, metric, dimensions)
     this.ns = 2
   }
 

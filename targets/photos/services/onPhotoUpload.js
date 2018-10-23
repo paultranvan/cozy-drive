@@ -1,5 +1,10 @@
 import {log, cozyClient} from 'cozy-konnector-libs'
-import {computeTemporalEps, computeSpatialEps, computeSpatioTemporalScaledEps, runOptics} from '../../../src/photos/ducks/clustering/services'
+import {computeTemporalEps,
+  computeSpatialEps,
+  computeSpatioTemporalScaledEps,
+  runOptics,
+  saveResults
+} from '../../../src/photos/ducks/clustering/services'
 import Metrics from '../../../src/photos/ducks/clustering/metrics'
 import { gradientClustering, gradientAngle } from '../../../src/photos/ducks/clustering/gradient'
 
@@ -19,8 +24,8 @@ process.on('unhandledRejection', err => {
 })
 
 // Returns the photos metadata sorted by date
-const extractInfo = async (files) => {
-  const photos = files.map(file => {
+const extractInfo = (files) => {
+  let photos = files.map(file => {
     const photo = {
       id: file._id,
       name: file.name
@@ -31,18 +36,19 @@ const extractInfo = async (files) => {
     } else {
       photo.date = file.created_at
     }
-    photo.date = new Date(photo.date.slice(0, 19)).getTime()
+    photo.date = (new Date(photo.date.slice(0, 19)).getTime() / 1000) / 3600
     return photo
   }).sort((pa, pb) => pa.date - pb.date)
+
   return photos
 }
 
 const clusterPhotos = async (files) => {
-  const data = await extractInfo(files)
+  const dataset = extractInfo(files)
   //log('info', JSON.stringify(info))
 
   // TODO for testing
-  const dataset = [
+  /*const dataset = [
     {
       date: 10,
       lat: 41.1,
@@ -68,29 +74,32 @@ const clusterPhotos = async (files) => {
       lat: 20,
       lon: 20
     }
-  ]
+  ]*/
 
   const metric = new Metrics()
-  const epsTemporal = computeTemporalEps(dataset, metric, 100)
-  const epsSpatial = computeSpatialEps(dataset, metric, 100)
+  let epsTemporal = computeTemporalEps(dataset, metric, 100)
+  let epsSpatial = computeSpatialEps(dataset, metric, 100)
+
+  //console.log('dataset : ', dataset)
+
 
   if (epsTemporal < MIN_TEMPORAL_EPS) {
-    metric.epsTemporal = MIN_TEMPORAL_EPS
+    epsTemporal = MIN_TEMPORAL_EPS
   } else if (epsSpatial < MIN_SPATIAL_EPS) {
-    metric.epsSpatial = MIN_SPATIAL_EPS
+    epsSpatial = MIN_SPATIAL_EPS
   }
 
+  console.log('dataset : ', dataset)
+
   const eps = computeSpatioTemporalScaledEps(dataset, metric, 100)
-  console.log('eps temporal : ', metric.epsTemporal)
-  console.log('eps spatial : ', metric.epsSpatial)
+  console.log('eps temporal : ', epsTemporal)
+  console.log('eps spatial : ', epsSpatial)
   console.log('eps spatio temporal : ', eps)
-  const maxBound = 2 * eps
-  const optics = runOptics(dataset, 1000, metric.spatial)
-  const angle = gradientAngle(eps, 1)
-  const clusters = gradientClustering(dataset, optics, angle, 1000)
-
-  console.log('labels : ', clusters)
-
+  const maxBound = 2 * epsTemporal
+  const optics = runOptics(dataset, epsTemporal, metric.temporal)
+  const angle = gradientAngle(epsTemporal, 1)
+  console.log('angle : ', angle)
+  const clusters = gradientClustering(dataset, optics, angle, maxBound)
   return clusters
 
   //TODO write albumswith auto:true
@@ -99,6 +108,8 @@ const clusterPhotos = async (files) => {
   //TODO support several clusterings
 
 }
+
+
 
 const onPhotoUpload = async () => {
   //const result = await cozyClient.data.findAll("io.cozy.files")
@@ -114,8 +125,16 @@ const onPhotoUpload = async () => {
   log('info', `new last seq: ${newLastSeq}`)
   //log('info', JSON.stringify(files))
 
-  const clusteredFiles = await clusterPhotos(files)
+  const startTime = new Date()
 
+  const clusters = await clusterPhotos(files)
+  log('info', `${clusters.length} clusters`)
+
+  const endTime = new Date()
+  const timeDiff = (endTime - startTime) / 1000
+  log('info', `Time elapsed for clustering ${files.length} photos: ${timeDiff}`)
+
+  saveResults(clusters)
 
 }
 

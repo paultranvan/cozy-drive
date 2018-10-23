@@ -12,7 +12,7 @@ const inflectionIndex = (xR, yR, zR) => {
   const v1 = distanceVectors(xR, yR)
   const v2 = distanceVectors(yR, zR)
 
-  return (1 + (xR - yR) * (zR - yR)) / (v1 * v2)
+  return (-1 + (xR - yR) * (zR - yR)) / (v1 * v2)
 }
 
 const gradientDeterminant = (xR, yR, zR) => {
@@ -87,7 +87,6 @@ const decreasingSlope = (yR, zR, a) => {
   }
   return false
 }
-
 const mergeClusters = (clusters, currIndex, nextIndex) => {
   const newCluster = clusters[currIndex]
     .concat(clusters[nextIndex])
@@ -106,7 +105,7 @@ const respectOrder = (clusters, curr) => {
 
   // The current element is not the highest in the cluster:
   // the next label should be in the same cluster
-  if (curr.labelIndex !== Math.max(...curr.cluster)) {
+  if (curr.label !== Math.max(...curr.cluster)) {
     return curr.cluster.includes(nextLabel)
   }
   // The next element should be in the next cluster, whatever the position
@@ -138,6 +137,7 @@ const reorganizeClusters = clusters => {
 
 const clusterizeData = (data, clusters) => {
   const newClusters = reorganizeClusters(clusters)
+
   let cpt = 0
   const results = newClusters.map(clu => {
     return clu.map(c => {
@@ -165,7 +165,7 @@ const clusterizeData = (data, clusters) => {
         set_of_clusters: [list] a list of found clusters
             - note: individual cluster is just a list of point indices belonging to a specific cluster
 */
-export const gradientClustering = (data, optics, angle, max_bound) => {
+export const gradientClustering = (data, optics, angle, maxBound) => {
   let reachabilities = optics.reachabilities
   const ordering = optics.ordering
 
@@ -182,14 +182,14 @@ export const gradientClustering = (data, optics, angle, max_bound) => {
 
     // Special case where the current point is a noise:
     // save the current cluster and start a new
-    if (currR > max_bound) {
+    if (currR > maxBound) {
       if (curr_cluster.length > 0) {
         clusters.push(curr_cluster)
       }
       curr_cluster = [ordering[i]]
 
       // The next point is also a noise: the current point is a single cluster
-      if (nextR > max_bound) {
+      if (nextR > maxBound) {
         clusters.push(curr_cluster)
         curr_cluster = []
       }
@@ -234,7 +234,7 @@ export const gradientClustering = (data, optics, angle, max_bound) => {
   const lastPt = reachabilities[reachabilities.length - 1]
   const lastOrd = ordering[ordering.length - 1]
   // The last point is not noise: add it to the current cluster if not empty
-  if (curr_cluster.length > 0 && lastPt < max_bound) {
+  if (curr_cluster.length > 0 && lastPt < maxBound) {
     curr_cluster.push(lastOrd)
     clusters.push(curr_cluster)
   } else {
@@ -244,7 +244,6 @@ export const gradientClustering = (data, optics, angle, max_bound) => {
     }
     clusters.push([lastOrd])
   }
-  console.log('ordering : ', ordering)
   return clusterizeData(data, clusters)
 }
 
