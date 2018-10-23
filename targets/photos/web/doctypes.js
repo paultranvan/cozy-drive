@@ -13,5 +13,8 @@ export default {
         doctype: 'io.cozy.files'
       }
     }
+  },
+  files: {
+    doctype: 'io.cozy.files'
   }
 }
