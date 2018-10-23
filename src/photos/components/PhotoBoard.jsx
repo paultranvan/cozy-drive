@@ -30,6 +30,8 @@ export class PhotoBoard extends Component {
       }
     } = this.props
 
+    console.log('function f : ', f)
+
     const isError = fetchStatus === 'failed'
     const isFetching = fetchStatus === 'pending' || fetchStatus === 'loading'
 
@@ -55,6 +57,9 @@ export class PhotoBoard extends Component {
               photoList.title ||
               (photoList.day ? f(photoList.day, 'DD MMMM YYYY') : '')
             }
+            /*title={
+              photoList.title || ''
+            }*/
             photos={photoList.photos}
             selected={selected}
             showSelection={showSelection}
