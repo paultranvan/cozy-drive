@@ -28,8 +28,6 @@ export class PhotoBoard extends Component {
       contentRect: { entry: { width } }
     } = this.props
 
-    console.log('function f : ', f)
-
     const isError = fetchStatus === 'failed'
     const isFetching = fetchStatus === 'pending' || fetchStatus === 'loading'
 
@@ -50,10 +48,10 @@ export class PhotoBoard extends Component {
       >
         {lists.map(photoList => (
           <PhotoList
-            key={photoList.title || photoList.day}
+            key={photoList.date}
             title={
               photoList.title ||
-              (photoList.day ? f(photoList.day, 'DD MMMM YYYY') : '')
+              (photoList.date ? f(photoList.date, 'DD MMMM YYYY') : '')
             }
             /*title={
               photoList.title || ''

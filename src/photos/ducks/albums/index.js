@@ -12,7 +12,14 @@ export const DOCTYPE = 'io.cozy.photos.albums'
 
 const ALBUMS_QUERY = client => client.all(DOCTYPE).include(['photos'])
 export const AUTO_ALBUMS_QUERY = client =>
-  client.find(DOCTYPE).where({ auto: true })
+  client
+    .find(DOCTYPE)
+    .where({ auto: true })
+    .include(['photos'])
+    .sortBy({
+      name: 'desc'
+    })
+    .limitBy(10)
 
 const addPhotos = async (album, photos) => {
   try {
@@ -177,6 +184,7 @@ export const getReferencedAutoAlbum = (albums, photo) => {
     photo.relationships.referenced_by.data.length > 0
   ) {
     const refs = photo.relationships.referenced_by.data
+    console.log('refs : ', refs)
     for (const ref of refs) {
       if (ref.type === DOCTYPE) {
         const album = albums.find(album => album.id === ref.id)
