@@ -31,12 +31,12 @@ const extractInfo = (files) => {
       name: file.name
     }
     if (file.metadata) {
-      photo.date = file.metadata.datetime
+      photo.datetime = file.metadata.datetime
       photo.gps = file.metadata.gps
     } else {
       photo.date = file.created_at
     }
-    photo.date = (new Date(photo.date.slice(0, 19)).getTime() / 1000) / 3600
+    photo.date = (new Date(photo.datetime.slice(0, 19)).getTime() / 1000) / 3600
     return photo
   }).sort((pa, pb) => pa.date - pb.date)
 
@@ -89,16 +89,17 @@ const clusterPhotos = async (files) => {
     epsSpatial = MIN_SPATIAL_EPS
   }
 
-  console.log('dataset : ', dataset)
+  //console.log('dataset : ', dataset)
 
   const eps = computeSpatioTemporalScaledEps(dataset, metric, 100)
-  console.log('eps temporal : ', epsTemporal)
-  console.log('eps spatial : ', epsSpatial)
-  console.log('eps spatio temporal : ', eps)
+  log('info', `eps temporal : ${epsTemporal}`)
+  //console.log('eps spatial : ', epsSpatial)
+  //console.log('eps spatio temporal : ', eps)
+  epsTemporal = 48 // for testing
   const maxBound = 2 * epsTemporal
   const optics = runOptics(dataset, epsTemporal, metric.temporal)
   const angle = gradientAngle(epsTemporal, 1)
-  console.log('angle : ', angle)
+  log('info', `angle : , ${angle}`)
   const clusters = gradientClustering(dataset, optics, angle, maxBound)
   return clusters
 

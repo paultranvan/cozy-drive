@@ -76,7 +76,6 @@ describe('optics', () => {
     ]
 
     const optics = runOptics(dataset, eps, metric.temporal)
-    console.log('optics : ', optics)
     expect(optics.ordering).toEqual(expect.arrayContaining(expectedOrder))
     expect(optics.reachabilities).toEqual(expect.arrayContaining(expectedReach))
     const angle = gradientAngle(15, 1)
@@ -100,7 +99,6 @@ describe('optics', () => {
     ]
 
     const optics = runOptics(dataset, eps, metric.spatial)
-    console.log('optics : ', optics)
     expect(optics.ordering).toEqual(expect.arrayContaining(expectedOrder))
     expect(optics.reachabilities).toEqual(expect.arrayContaining(expectedReach))
     const angle = gradientAngle(15, 1)
@@ -124,7 +122,6 @@ describe('optics', () => {
     ]
 
     const optics = runOptics(dataset, eps, metric.spatioTemporalScaled)
-    console.log('optics : ', optics)
     expect(optics.ordering).toEqual(expect.arrayContaining(expectedOrder))
     expect(optics.reachabilities).toEqual(expect.arrayContaining(expectedReach))
     const angle = gradientAngle(15, 1)

@@ -1,6 +1,6 @@
 import { OPTICS } from 'density-clustering'
 import KNN from './knn/knn'
-import { cozyClient } from 'cozy-konnector-libs'
+import { log, cozyClient } from 'cozy-konnector-libs'
 
 //import { DOCTYPE as DOCTYPE_ALBUM} from '../albums/index'
 
@@ -99,7 +99,7 @@ const computeEps = (dataset, dimensions, metric, percentile) => {
   const epsSlope = knn.epsSignificativeSlope(distances)
   const epsCurv = knn.epsMaxCurvative(distances)
 
-  console.log('eps : ', epsSlope)
+  //console.log('eps : ', epsSlope)
 
   //console.log('eps slope : ', epsSlope)
   //console.log('eps curv : ', epsCurv)
@@ -108,29 +108,34 @@ const computeEps = (dataset, dimensions, metric, percentile) => {
   return epsSlope
 }
 
-const albumName = photos => {
-  if (photos.length === 1) {
-    return JSON.stringify(new Date(photos[0].date * 3600 * 1000)).slice(1, 11)
-  } else {
-    const firstDate = new Date(photos[0].date * 3600 * 1000)
-    const lastDate = new Date(photos[photos.length - 1].date * 3600 * 1000)
-    const diff = photos[photos.length - 1].date - photos[0].date
+const albumPeriod = photos => {
+  //console.log('photos : ', photos)
+  const startDate = photos[0].datetime
+  const endDate =
+    photos.length > 1 ? photos[photos.length - 1].datetime : startDate
+  return { start: startDate, end: endDate }
+
+  /*
     // Same day
     if (firstDate.getDate() === lastDate.getDate() && diff < 24) {
-      return JSON.stringify(firstDate).slice(1, 11)
+      return first
     } else {
       const fDate = JSON.stringify(firstDate).slice(1, 11)
       const lDate = JSON.stringify(lastDate).slice(1, 11)
       return fDate + ' - ' + lDate
-    }
-  }
+    }*/
+}
+
+const albumName = photos => {
+  return photos[0].datetime
+  //return new Date(photos[0].date * 3600 * 1000).toString()
 }
 
 // TODO: deal with ghost references, ie a file referencing several auto albums
 // and thus one won't be used
 const createReferences = async (album, photos) => {
   const ids = photos.map(p => p.id)
-  console.log('create relations for ', ids)
+  //log('info', `create relations for ${ids}`)
   const result = await cozyClient.data.addReferencedFiles(album, ids)
   return result
 }
@@ -147,12 +152,15 @@ const autoAlbumExists = (albums, name) => {
 
 const createAutoAlbum = async (albums, photos) => {
   const name = albumName(photos)
+  const period = albumPeriod(photos)
+
+  // TODO name is not enough is photos have been added
   if (!autoAlbumExists(albums, name)) {
     const created_at = new Date()
     // TODO add fields period (d1 - d2) + place (gps1 - gps2)
     // this is useful for latter where we need the name to be a single date
     // as we use it to sort
-    const album = { name, created_at, auto: true }
+    const album = { name, created_at, auto: true, period }
     return await cozyClient.data.create(ALBUM_DOCTYPE, album)
   }
 }
@@ -162,6 +170,7 @@ export const saveResults = async clusters => {
   for (const photos of clusters) {
     const album = await createAutoAlbum(autoAlbums, photos)
     if (album) {
+      log('info', `period : ${JSON.stringify(album.period)}`)
       await createReferences(album, photos)
     }
   }
