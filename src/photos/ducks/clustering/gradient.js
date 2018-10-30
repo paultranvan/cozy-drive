@@ -252,5 +252,5 @@ export const gradientAngle = (eps, k) => {
   if (k === undefined) {
     k = 1
   }
-  return Math.cos(2 * Math.atan(1 / (eps * k)))
+  return Math.cos(2 * Math.atan(1 / eps)) / k
 }
