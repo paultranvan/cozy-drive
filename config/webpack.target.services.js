@@ -3,6 +3,7 @@
 const path = require('path')
 const fs = require('fs')
 const { DefinePlugin } = require('webpack')
+const nodeExternals = require('webpack-node-externals')
 
 const TARGET_DIR = path.resolve(__dirname, '../targets/')
 const SRC_DIR = path.resolve(__dirname, '../src/')
@@ -61,6 +62,7 @@ module.exports = function(production, app) {
     },
     plugins: plugins,
     module: module,
-    target: target
+    target: target,
+    externals: [nodeExternals()]
   }
 }
