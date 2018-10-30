@@ -49,12 +49,7 @@ export const computeSpatioTemporalScaledEps = (dataset, metric, percentile) => {
       percentile
     )
   } else {
-    eps = computeEps(
-      dataset,
-      ['date', 'lat', 'lon'],
-      metric.spatioTemporal,
-      percentile
-    )
+    eps = undefined
   }
   metric.eps = eps
   return eps
@@ -74,12 +69,7 @@ export const computeSpatioTemporalMaxNormalizedEps = (
       percentile
     )
   } else {
-    eps = computeEps(
-      dataset,
-      ['date', 'lat', 'lon'],
-      metric.spatioTemporal,
-      percentile
-    )
+    eps = undefined
   }
   metric.eps = eps
   return eps
