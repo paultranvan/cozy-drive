@@ -16,17 +16,11 @@ const TIMELINE_QUERY = client =>
       class: 'image',
       trashed: false
     })
-    .select([
-      'dir_id',
-      'name',
-      'size',
-      'updated_at',
-      'metadata',
-      'relationships'
-    ])
+    .select(['dir_id', 'name', 'size', 'updated_at', 'metadata'])
     .sortBy({
       'metadata.datetime': 'desc'
     })
+    .include(['albums'])
 
 const TIMELINE_MUTATIONS = query => ({
   uploadPhoto: (file, dirPath) => {
@@ -46,13 +40,15 @@ const TIMELINE_MUTATIONS = query => ({
 })
 
 const sectionTitle = album => {
-  const startDate = new Date(album.period.start)
-  const endDate = new Date(album.period.end)
-  const diffHours = (endDate.getTime() - startDate.getTime()) * 1000 * 3600
-  if (startDate.getDate() !== endDate.getDate() && diffHours > 24) {
-    return (
-      album.period.start.slice(0, 10) + ' - ' + album.period.end.slice(0, 10)
-    )
+  if (album.period) {
+    const startDate = new Date(album.period.start)
+    const endDate = new Date(album.period.end)
+    const diffHours = (endDate.getTime() - startDate.getTime()) * 1000 * 3600
+    if (startDate.getDate() !== endDate.getDate() && diffHours > 24) {
+      return (
+        album.period.start.slice(0, 10) + ' - ' + album.period.end.slice(0, 10)
+      )
+    }
   }
   return null
 }
@@ -62,6 +58,7 @@ const photosByQueryAutoAlbums = albums => {
   return albums.map(album => {
     const title = sectionTitle(album)
     console.log('title : ', title)
+    console.log('photos : ', album.photos.data)
 
     const photos = album.photos.data
       .sort((pa, pb) => {
@@ -85,33 +82,49 @@ const photosByQueryAutoAlbums = albums => {
     }
   })
 }
-/*
-const getReferenced = (photo) => {
-  if (
-    photo.relationships &&
-    photo.relationships.referenced_by &&
-    photo.relationships.referenced_by.data &&
-    photo.relationships.referenced_by.data.length > 0
-  ) {
-    const refs = photo.relationships.referenced_by.data
-    return refs.filter(ref => ref.type === DOCTYPE)
-  }
-  return []
-}
 
-const photosByQueryFiles = (photos) => {
+const photosByQueryFiles = photos => {
   const sections = {}
-  const albums = {}
-  photos.forEach(p => {
-    const refs = getReferenced(p)
-    const a = refs.find(r => albums[r.id])
-    // An album has already been processed
-    if (a) {
 
+  photos.forEach(p => {
+    const refAlbums = p.albums.data
+    console.log('refs for photo : ', refAlbums)
+
+    const refAlbum = refAlbums ? refAlbums.find(ref => ref.auto) || null : null
+    console.log('ref album : ', refAlbum)
+    const section = {}
+
+    // The photo is referenced by an album already processed: add the photo
+    if (refAlbum) {
+      section.title = sectionTitle(refAlbum)
+      section.date = refAlbum.name.slice(0, 10)
+    } else {
+      const datetime =
+        p.metadata && p.metadata.datetime ? p.metadata.datetime : Date.now()
+      const day = datetime.slice(0, 10)
+      section.date = day
     }
-  }
+
+    if (!sections.hasOwnProperty(section.date)) {
+      sections[section.date] = { title: section.title, photos: [] }
+    }
+    sections[section.date].photos.push(p)
+  })
+
+  console.log('sections : ', JSON.stringify(sections))
+
+  const sorted = Object.keys(sections)
+  sorted.sort((a, b) => new Date(a).getTime() - new Date(b).getTime()).reverse()
+
+  return sorted.map(date => {
+    console.log('date in sorted : ', date)
+    return {
+      title: sections[date].title,
+      photos: sections[date].photos,
+      date: date
+    }
+  })
 }
-*/
 
 const getPhotosByAutoAlbums = (albums, photos) => {
   let sections = {}
@@ -126,14 +139,7 @@ const getPhotosByAutoAlbums = (albums, photos) => {
       const startDate = new Date(refAlbum.period.start)
       const endDate = new Date(refAlbum.period.end)
       const diffHours = (endDate.getTime() - startDate.getTime()) * 1000 * 3600
-      console.log(
-        'diff hours between ',
-        startDate,
-        ' and ',
-        endDate,
-        ' : ',
-        diffHours
-      )
+
       if (startDate.getDate() !== endDate.getDate() && diffHours > 24) {
         album.period =
           refAlbum.period.start.slice(0, 10) +
@@ -202,8 +208,8 @@ const getPhotosByDay = photos => {
 }
 // eslint-disable-next-line
 export default props => (
-  <Query query={AUTO_ALBUMS_QUERY}>
-    {({ data: data, ...result }) => (
+  <Query query={TIMELINE_QUERY} as={TIMELINE} mutations={TIMELINE_MUTATIONS}>
+    {({ data, ...result }, mutations) => (
       /*<Query
         query={TIMELINE_QUERY}
         as={TIMELINE}
@@ -213,33 +219,14 @@ export default props => (
         */
       //{...mutations}
       <Timeline
-        lists={data ? photosByQueryAutoAlbums(data) : []}
+        lists={data ? photosByQueryFiles(data) : []}
         data={data}
+        {...mutations}
         {...result}
         {...props}
       />
       /*)}
       </Query>*/
-    )}
-  </Query>
-)
-
-export const TimelineBoard = ({ selection, ...props }) => (
-  <Query query={ALBUMS_QUERY}>
-    {({ data: albumsData, ...result }) => (
-      <Query query={TIMELINE_QUERY}>
-        {({ data, ...result }) => (
-          <PhotoBoard
-            lists={data ? fakeFunction(albumsData, data) : []}
-            photosContext="timeline"
-            onPhotoToggle={selection.toggle}
-            onPhotosSelect={selection.select}
-            onPhotosUnselect={selection.unselect}
-            {...result}
-            {...props}
-          />
-        )}
-      </Query>
     )}
   </Query>
 )
