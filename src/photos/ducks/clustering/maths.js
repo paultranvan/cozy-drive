@@ -25,7 +25,8 @@ export const mean = values => {
   return sum / values.length
 }
 
-export const quantile = (sortedArray, percentile) => {
+export const quantile = (array, percentile) => {
+  const sortedArray = array.sort((a, b) => a - b)
   if (percentile === undefined) {
     percentile = 100
   }
@@ -40,10 +41,10 @@ export const quantile = (sortedArray, percentile) => {
 }
 
 // TODO: useful ?
-export const toDegrees = (radians) => {
-    return radians * 180 / Math.PI
+export const toDegrees = radians => {
+  return radians * 180 / Math.PI
 }
 
-export const toRadians = (degrees) => {
-    return degrees * Math.PI / 180
+export const toRadians = degrees => {
+  return degrees * Math.PI / 180
 }

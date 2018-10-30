@@ -7,6 +7,7 @@ import {
 } from './services'
 import Metrics from './metrics'
 import { gradientClustering, gradientAngle } from './gradient'
+import { quantile, mean, standardDeviation } from './maths'
 
 const N_DIGITS = 4
 const dataset = [
@@ -44,6 +45,38 @@ const dataset = [
 
 const metric = new Metrics()
 const eps = 1000
+
+describe('maths', () => {
+  let random_data = [
+    -1.56963766,
+    0.77667398,
+    1.1107855,
+    -0.12783372,
+    -0.83557117,
+    -0.48297551,
+    -1.89519756,
+    1.55576088,
+    -0.82488814,
+    -0.23281369,
+    -0.54799257,
+    0.05951311,
+    0.58379171,
+    -0.69129147,
+    0.04765197
+  ]
+  it('Should compute the right mean', () => {
+    expect(mean(random_data)).toBeCloseTo(-0.2049, N_DIGITS)
+  })
+  it('Should compute the right standard deviation', () => {
+    expect(standardDeviation(random_data)).toBeCloseTo(0.9125, N_DIGITS)
+  })
+  it('Should compute the right quantiles', () => {
+    expect(quantile(random_data, 5)).toBeCloseTo(-1.6673, N_DIGITS)
+    expect(quantile(random_data, 25)).toBeCloseTo(-0.7581, N_DIGITS)
+    expect(quantile(random_data, 42)).toBeCloseTo(-0.4908, N_DIGITS)
+    expect(quantile(random_data, 50)).toBeCloseTo(-0.2328, N_DIGITS)
+  })
+})
 
 describe('knn', () => {
   it('Should compute temporal eps', () => {
