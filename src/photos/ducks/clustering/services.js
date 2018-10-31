@@ -19,6 +19,23 @@ export const runOptics = (dataset, eps, metric) => {
   return result
 }
 
+export const runSimplifiedOptics = (dataset, eps, metric) => {
+  let reachabilities = [undefined]
+  const ordering = [...Array(dataset.length).keys()]
+  for (let i = 0; i < dataset.length - 1; i++) {
+    const point1 = dataset[i]
+    const point2 = dataset[i + 1]
+    const dist = metric(point1, point2)
+    const reach = dist < eps ? dist : undefined
+    reachabilities.push(reach)
+  }
+  const result = {
+    ordering: ordering,
+    reachabilities: reachabilities
+  }
+  return result
+}
+
 export const computeTemporalEps = (dataset, metric, percentile) => {
   metric.epsTemporal = computeEps(
     dataset,

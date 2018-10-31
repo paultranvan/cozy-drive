@@ -3,7 +3,8 @@ import {
   computeSpatialEps,
   computeSpatioTemporalScaledEps,
   computeSpatioTemporalMaxNormalizedEps,
-  runOptics
+  runOptics,
+  runSimplifiedOptics
 } from './services'
 import Metrics from './metrics'
 import { gradientClustering, gradientInflection } from './gradient'
@@ -160,5 +161,52 @@ describe('optics', () => {
     const cosAngle = gradientInflection(15, 1)
     const clustering = gradientClustering(dataset, optics, cosAngle, eps)
     expect(clustering).toEqual(expect.arrayContaining(expectedClusters))
+  })
+})
+
+describe('simplified optics', () => {
+  it('Should cluster data with temporal metric', () => {
+    const expectedOrder = [0, 1, 2, 3, 4, 5]
+    const expectedReach = [undefined, 2, 3, 45, 20, 30]
+
+    const optics = runSimplifiedOptics(dataset, eps, metric.temporal)
+    expect(optics.ordering).toEqual(expect.arrayContaining(expectedOrder))
+    expect(optics.reachabilities).toEqual(expect.arrayContaining(expectedReach))
+  })
+
+  it('Should cluster data with spatial metric', () => {
+    const expectedOrder = [0, 1, 4, 3, 2, 5]
+    const expectedReach = [
+      undefined,
+      11.119492664456596,
+      401.5003434905605,
+      386.7568104542309,
+      68.80809741870237,
+      undefined
+    ]
+
+    const optics = runSimplifiedOptics(dataset, eps, metric.spatial)
+    expect(optics.ordering).toEqual(expect.arrayContaining(expectedOrder))
+    expect(optics.reachabilities).toEqual(expect.arrayContaining(expectedReach))
+  })
+
+  it('Should cluster data with spatio temporal scaled metric', () => {
+    const expectedOrder = [0, 1, 2, 3, 4, 5]
+    const expectedReach = [
+      undefined,
+      1.043125908958386,
+      3.057181409497407,
+      24,
+      10.266865749582625,
+      25.831530037137977
+    ]
+
+    const optics = runSimplifiedOptics(
+      dataset,
+      eps,
+      metric.spatioTemporalScaled
+    )
+    expect(optics.ordering).toEqual(expect.arrayContaining(expectedOrder))
+    expect(optics.reachabilities).toEqual(expect.arrayContaining(expectedReach))
   })
 })
