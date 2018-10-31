@@ -6,7 +6,7 @@ import {computeTemporalEps,
   saveResults
 } from '../../../src/photos/ducks/clustering/services'
 import Metrics from '../../../src/photos/ducks/clustering/metrics'
-import { gradientClustering, gradientAngle } from '../../../src/photos/ducks/clustering/gradient'
+import { gradientClustering, gradientInflection } from '../../../src/photos/ducks/clustering/gradient'
 
 //import { FILES_DOCTYPE } from '../../../src/photos/ducks/timeline/index'
 //const { cozyClient } = require('cozy-konnector-libs')
@@ -98,9 +98,9 @@ const clusterPhotos = async (files) => {
   epsTemporal = 48 // for testing
   const maxBound = 2 * epsTemporal
   const optics = runOptics(dataset, epsTemporal, metric.temporal)
-  const angle = gradientAngle(epsTemporal, 1)
-  log('info', `angle : , ${angle}`)
-  const clusters = gradientClustering(dataset, optics, angle, maxBound)
+  const cosAngle = gradientInflection(epsTemporal, 1)
+  log('info', `cosAngle : , ${cosAngle}`)
+  const clusters = gradientClustering(dataset, optics, cosAngle, maxBound)
   return clusters
 
   //TODO write albumswith auto:true

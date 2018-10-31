@@ -6,7 +6,7 @@ import {
   runOptics
 } from './services'
 import Metrics from './metrics'
-import { gradientClustering, gradientAngle } from './gradient'
+import { gradientClustering, gradientInflection } from './gradient'
 import { quantile, mean, standardDeviation } from './maths'
 
 const N_DIGITS = 4
@@ -111,8 +111,8 @@ describe('optics', () => {
     const optics = runOptics(dataset, eps, metric.temporal)
     expect(optics.ordering).toEqual(expect.arrayContaining(expectedOrder))
     expect(optics.reachabilities).toEqual(expect.arrayContaining(expectedReach))
-    const angle = gradientAngle(15, 1)
-    const clustering = gradientClustering(dataset, optics, angle, eps)
+    const cosAngle = gradientInflection(15, 1)
+    const clustering = gradientClustering(dataset, optics, cosAngle, eps)
     expect(clustering).toEqual(expect.arrayContaining(expectedClusters))
   })
 
@@ -134,8 +134,8 @@ describe('optics', () => {
     const optics = runOptics(dataset, eps, metric.spatial)
     expect(optics.ordering).toEqual(expect.arrayContaining(expectedOrder))
     expect(optics.reachabilities).toEqual(expect.arrayContaining(expectedReach))
-    const angle = gradientAngle(15, 1)
-    const clustering = gradientClustering(dataset, optics, angle, eps)
+    const cosAngle = gradientInflection(15, 1)
+    const clustering = gradientClustering(dataset, optics, cosAngle, eps)
     expect(clustering).toEqual(expect.arrayContaining(expectedClusters))
   })
 
@@ -157,8 +157,8 @@ describe('optics', () => {
     const optics = runOptics(dataset, eps, metric.spatioTemporalScaled)
     expect(optics.ordering).toEqual(expect.arrayContaining(expectedOrder))
     expect(optics.reachabilities).toEqual(expect.arrayContaining(expectedReach))
-    const angle = gradientAngle(15, 1)
-    const clustering = gradientClustering(dataset, optics, angle, eps)
+    const cosAngle = gradientInflection(15, 1)
+    const clustering = gradientClustering(dataset, optics, cosAngle, eps)
     expect(clustering).toEqual(expect.arrayContaining(expectedClusters))
   })
 })
