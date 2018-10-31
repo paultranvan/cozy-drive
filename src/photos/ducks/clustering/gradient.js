@@ -165,7 +165,7 @@ const clusterizeData = (data, clusters) => {
         set_of_clusters: [list] a list of found clusters
             - note: individual cluster is just a list of point indices belonging to a specific cluster
 */
-export const gradientClustering = (data, optics, angle, maxBound) => {
+export const gradientClustering = (data, optics, cosAngle, maxBound) => {
   let reachabilities = optics.reachabilities
   const ordering = optics.ordering
 
@@ -199,8 +199,8 @@ export const gradientClustering = (data, optics, angle, maxBound) => {
 
     // Special conditions: if any of them is satisfied, save current cluster
     const lonelyPt = lonelyPoint(data[i - 1], data[i], prevR, currR, nextR)
-    const incrSlope = increasingSlope(prevR, currR, nextR, angle)
-    const decrSlope = decreasingSlope(currR, nextR, angle)
+    const incrSlope = increasingSlope(prevR, currR, nextR, cosAngle)
+    const decrSlope = decreasingSlope(currR, nextR, cosAngle)
 
     if (lonelyPt || incrSlope || decrSlope) {
       clusters.push(curr_cluster)
@@ -208,7 +208,7 @@ export const gradientClustering = (data, optics, angle, maxBound) => {
     }
 
     // The current point is an inflection point
-    if (inflectionIndex(prevR, currR, nextR) > angle) {
+    if (inflectionIndex(prevR, currR, nextR) > cosAngle) {
       // The next vector deviates to the left, marking an endpoint
       if (gradientDeterminant(prevR, currR, nextR) < 0) {
         curr_cluster.push(ordering[i])
@@ -248,7 +248,7 @@ export const gradientClustering = (data, optics, angle, maxBound) => {
 }
 
 /* Compute the gradient angle based on the eps and a k multiplicator coefficient */
-export const gradientAngle = (eps, k) => {
+export const gradientInflection = (eps, k) => {
   if (k === undefined) {
     k = 1
   }
