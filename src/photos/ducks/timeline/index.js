@@ -87,7 +87,7 @@ const photosByQueryFiles = photos => {
   const sections = {}
 
   photos.forEach(p => {
-    const refAlbums = p.albums.data
+    const refAlbums = p.albums ? p.albums.data : null
     console.log('refs for photo : ', refAlbums)
 
     const refAlbum = refAlbums ? refAlbums.find(ref => ref.auto) || null : null

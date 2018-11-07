@@ -37,6 +37,7 @@ const addPhotos = async (album, photos) => {
   }
 }
 
+
 const ALBUMS_MUTATIONS = client => ({
   addPhotos,
   createAlbum: async (name, photos, created_at = new Date()) => {
@@ -46,8 +47,8 @@ const ALBUMS_MUTATIONS = client => ({
         return
       }
       const album = { _type: DOCTYPE, name, created_at }
-      /* 
-        !WHY do I need that stuff ? withMutations() and mutations='' are not 
+      /*
+        !WHY do I need that stuff ? withMutations() and mutations='' are not
         sending the same props
         */
       const realClient =
