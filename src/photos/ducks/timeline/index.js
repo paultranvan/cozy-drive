@@ -2,14 +2,14 @@ import React from 'react'
 import { Query } from 'cozy-client'
 import Timeline from './components/Timeline'
 import PhotoBoard from '../../components/PhotoBoard'
+import { DOCTYPE_FILES } from '../../../drive/lib/doctypes'
 
 // constants
 const TIMELINE = 'timeline'
-const FILES_DOCTYPE = 'io.cozy.files'
 
 const TIMELINE_QUERY = client =>
   client
-    .find(FILES_DOCTYPE)
+    .find(DOCTYPE_FILES)
     .where({
       class: 'image',
       trashed: false

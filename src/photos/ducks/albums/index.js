@@ -7,10 +7,21 @@ import AlbumPhotos from './components/AlbumPhotos'
 import PhotosPicker from './components/PhotosPicker'
 import AddToAlbumModal from './components/AddToAlbumModal'
 import Alerter from 'cozy-ui/react/Alerter'
+import { DOCTYPE_ALBUMS } from '../../../drive/lib/doctypes'
 
-export const DOCTYPE = 'io.cozy.photos.albums'
-
-const ALBUMS_QUERY = client => client.all(DOCTYPE).include(['photos'])
+const ALBUMS_QUERY = client =>
+  client
+    .find(DOCTYPE_ALBUMS)
+    .where({
+        auto: {
+          "$exists": false
+        }
+    })
+    .indexFields(['created_at'])
+    .sortBy({
+      created_at: 'desc'
+    })
+    .include(['photos'])
 
 const addPhotos = async (album, photos) => {
   try {
@@ -36,9 +47,9 @@ const ALBUMS_MUTATIONS = client => ({
         Alerter.error('Albums.create.error.name_missing')
         return
       }
-      const album = { _type: DOCTYPE, name, created_at }
-      /* 
-        !WHY do I need that stuff ? withMutations() and mutations='' are not 
+      const album = { _type: DOCTYPE_ALBUMS, name, created_at, auto: false }
+      /*
+        !WHY do I need that stuff ? withMutations() and mutations='' are not
         sending the same props
         */
       const realClient =
@@ -50,7 +61,7 @@ const ALBUMS_MUTATIONS = client => ({
         return
       }
       const resp = await realClient.create(
-        DOCTYPE,
+        DOCTYPE_ALBUMS,
         album,
         { photos },
         {
@@ -72,7 +83,7 @@ const ALBUMS_MUTATIONS = client => ({
 })
 
 const ALBUM_QUERY = (client, ownProps) =>
-  client.get(DOCTYPE, ownProps.router.params.albumId).include(['photos'])
+  client.get(DOCTYPE_ALBUMS, ownProps.router.params.albumId).include(['photos'])
 
 const ALBUM_MUTATIONS = query => ({
   updateAlbum: album => query.client.save(album),
@@ -160,7 +171,7 @@ export const belongsToAlbums = photos => {
     ) {
       const refs = photo.relationships.referenced_by.data
       for (const ref of refs) {
-        if (ref.type === DOCTYPE) {
+        if (ref.type === DOCTYPE_ALBUMS) {
           return true
         }
       }
