@@ -21,6 +21,7 @@ import {
   gradientClustering,
   gradientAngle
 } from 'photos/ducks/clustering/gradient'
+import { pastAlbumsToProcess } from 'photos/ducks/clustering/albums'
 
 // Returns the photos metadata sorted by date
 const extractInfo = photos => {
@@ -45,9 +46,7 @@ const extractInfo = photos => {
   return info
 }
 
-// Clusterize the given photos, i.e. organize them depending on metrics
-const clusterizePhotos = async (setting, photos) => {
-  const dataset = extractInfo(photos)
+const clusteringParameters = (dataset, setting) => {
   const params = defaultParameters(setting)
   if (!params) {
     log('warn', 'No default parameters for clustering found')
@@ -68,9 +67,30 @@ const clusterizePhotos = async (setting, photos) => {
   if (!params.cosAngle) {
     params.cosAngle = gradientAngle(epsMax, COARSE_COEFFICIENT)
   }
+  return params
+}
 
-  const reachs = reachabilities(dataset, spatioTemporalScaled, params)
-  gradientClustering(dataset, reachs, params)
+
+// Clusterize the given photos, i.e. organize them depending on metrics
+const clusterizePhotos = async (setting, photos) => {
+  const dataset = extractInfo(photos)
+  const params = clusteringParameters(dataset, setting)
+
+  // Get albums on which a re-clustering is necessary
+  const autoAlbums = autoAlbums()
+  const toClusterize = pastAlbumsToProcess(autoAlbums, dataset)
+
+  for (const key in toClusterize) {
+    // TODO adapt params to album temporality
+    const photos = toClusterize[key]
+    const reachs = reachabilities(photos, spatioTemporalScaled, params)
+    gradientClustering(photos, reachs, params)
+  }
+
+
+
+
+  // updateAlbums(clusters, albums)
 
   // TODO save params
   // TODO adapt percentiles for large datasets
@@ -91,6 +111,8 @@ const getNewPhotos = async setting => {
     return doc.class === 'image' && doc._id.includes('_design') && !doc.trashed
   })
 }
+
+
 
 const onPhotoUpload = async () => {
   let setting = await readSetting()
