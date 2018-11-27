@@ -1,7 +1,7 @@
 import React from 'react'
 
 import withFileUrl from './withFileUrl'
-import styles from './styles'
+import styles from './styles.styl'
 
 const AudioViewer = ({ file, url }) => (
   <div className={styles['pho-viewer-audioviewer']}>

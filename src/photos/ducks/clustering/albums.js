@@ -55,7 +55,7 @@ export const saveClustering = async clusters => {
       if (refs) {
         log(
           'info',
-          `${refs.length} photos clustered into: ${JSON.stringify(album)}`
+          `${photos.length} photos clustered into: ${JSON.stringify(album)}`
         )
       }
     }

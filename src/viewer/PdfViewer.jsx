@@ -2,7 +2,7 @@ import React from 'react'
 import NoViewer from './NoViewer'
 
 import withFileUrl from './withFileUrl'
-import styles from './styles'
+import styles from './styles.styl'
 
 const PdfViewer = ({ file, url }) => (
   <div className={styles['pho-viewer-pdfviewer']}>

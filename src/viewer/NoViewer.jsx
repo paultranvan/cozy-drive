@@ -16,7 +16,7 @@ import {
 } from 'components/pushClient'
 import { openLocalFileCopy } from 'drive/mobile/modules/offline/duck'
 
-import styles from './styles'
+import styles from './styles.styl'
 
 class AsyncActionButton extends React.Component {
   state = {

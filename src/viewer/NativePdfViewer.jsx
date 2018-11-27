@@ -8,7 +8,7 @@ import Spinner from 'cozy-ui/react/Spinner'
 import classNames from 'classnames'
 import { translate } from 'cozy-ui/react/I18n'
 
-import styles from './styles'
+import styles from './styles.styl'
 
 const VIEWER_OPTIONS = {
   email: {

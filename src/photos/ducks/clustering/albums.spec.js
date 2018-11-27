@@ -1,11 +1,25 @@
-import { cozyClient } from 'cozy-konnector-libs'
+jest.mock('cozy-konnector-libs')
+
 import { gradientClustering, gradientAngle } from './gradient'
-import { saveClustering } from './albums'
 import { reachabilities } from './service'
 import { spatioTemporalScaled } from './metrics'
 import { DOCTYPE_ALBUMS } from '../../../drive/lib/doctypes'
+//import { saveClustering } from './albums'
+
+process.env.COZY_URL = "cozy.tools:8080"
+process.env.COZY_CREDENTIALS = "cozy"
+
+//import { cozyClient } from 'cozy-konnector-libs'
+
+
+const cozyClient = require('cozy-konnector-libs').cozyClient
+const saveClustering = require('./albums').saveClustering
+//import { cozyClient } from 'cozy-konnector-libs'
+
+
 
 describe('albums', () => {
+
   it('Should create auto albums after clustering', () => {
     const dataset = [
       {

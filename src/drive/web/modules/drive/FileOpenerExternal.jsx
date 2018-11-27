@@ -11,7 +11,7 @@ import PropTypes from 'prop-types'
 
 import { Spinner, Alerter, translate } from 'cozy-ui/react'
 import util from 'cozy-ui/stylus/utilities/text'
-import styles from './styles'
+import styles from './styles.styl'
 import Viewer from 'viewer'
 
 const doNothing = () => {}

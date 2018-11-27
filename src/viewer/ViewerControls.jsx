@@ -5,7 +5,7 @@ import Hammer from 'hammerjs'
 import { translate } from 'cozy-ui/react/I18n'
 import { Button } from 'cozy-ui/react/Button'
 
-import styles from './styles'
+import styles from './styles.styl'
 
 const ACTIONS_HIDE_DELAY = 3000
 
