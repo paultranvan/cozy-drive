@@ -3,25 +3,20 @@ import { log, cozyClient } from 'cozy-konnector-libs'
 import { DOCTYPE_FILES } from 'drive/lib/doctypes'
 import {
   readSetting,
-  defaultParameters,
   createDefaultSetting
 } from 'photos/ducks/clustering/settings'
 import {
-  computeEpsTemporal,
-  computeEpsSpatial,
-  reachabilities
+  reachabilities,
+  clusteringParameters
 } from 'photos/ducks/clustering/service'
-import {
-  PERCENTILE,
-  DEFAULT_MAX_BOUND,
-  COARSE_COEFFICIENT
-} from 'photos/ducks/clustering/consts'
 import { spatioTemporalScaled } from 'photos/ducks/clustering/metrics'
+import { gradientClustering } from 'photos/ducks/clustering/gradient'
 import {
-  gradientClustering,
-  gradientAngle
-} from 'photos/ducks/clustering/gradient'
-import { saveClustering } from 'photos/ducks/clustering/albums'
+  saveClustering,
+  findAutoAlbums,
+  albumsToClusterize,
+  findAlbumsByIds
+} from 'photos/ducks/clustering/albums'
 
 // Returns the photos metadata sorted by date
 const extractInfo = photos => {
@@ -49,26 +44,12 @@ const extractInfo = photos => {
 // Clusterize the given photos, i.e. organize them depending on metrics
 const clusterizePhotos = async (setting, photos) => {
   const dataset = extractInfo(photos)
-  const params = defaultParameters(setting)
+  const params = clusteringParameters(dataset, setting)
   if (!params) {
     log('warn', 'No default parameters for clustering found')
     return []
   }
 
-  if (!params.epsTemporal) {
-    params.epsTemporal = computeEpsTemporal(dataset, PERCENTILE)
-  }
-  if (!params.epsSpatial) {
-    params.epsSpatial = computeEpsSpatial(dataset, PERCENTILE)
-  }
-  const epsMax = Math.max(params.epsTemporal, params.epsSpatial)
-  if (!params.maxBound) {
-    params.maxBound =
-      epsMax * 2 < DEFAULT_MAX_BOUND ? epsMax * 2 : DEFAULT_MAX_BOUND
-  }
-  if (!params.cosAngle) {
-    params.cosAngle = gradientAngle(epsMax, COARSE_COEFFICIENT)
-  }
 
   const reachs = reachabilities(dataset, spatioTemporalScaled, params)
   const clusters = gradientClustering(dataset, reachs, params)

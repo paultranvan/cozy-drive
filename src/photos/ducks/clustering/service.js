@@ -1,6 +1,37 @@
 import KNN from './knn'
 import { temporal, spatial } from './metrics'
-import { MIN_EPS_TEMPORAL, MIN_EPS_SPATIAL } from './consts'
+import {
+  MIN_EPS_TEMPORAL,
+  MIN_EPS_SPATIAL,
+  PERCENTILE,
+  DEFAULT_MAX_BOUND,
+  COARSE_COEFFICIENT
+} from './consts'
+import { gradientAngle } from './gradient'
+import { defaultParameters } from './settings'
+
+export const clusteringParameters = (dataset, setting) => {
+  const params = defaultParameters(setting)
+  if (!params) {
+    return null
+  }
+
+  if (!params.epsTemporal) {
+    params.epsTemporal = computeEpsTemporal(dataset, PERCENTILE)
+  }
+  if (!params.epsSpatial) {
+    params.epsSpatial = computeEpsSpatial(dataset, PERCENTILE)
+  }
+  const epsMax = Math.max(params.epsTemporal, params.epsSpatial)
+  if (!params.maxBound) {
+    params.maxBound =
+      epsMax * 2 < DEFAULT_MAX_BOUND ? epsMax * 2 : DEFAULT_MAX_BOUND
+  }
+  if (!params.cosAngle) {
+    params.cosAngle = gradientAngle(epsMax, COARSE_COEFFICIENT)
+  }
+  return params
+}
 
 /**
 * Compute the distance bewteen adjacents points in the dataset.
