@@ -6,17 +6,10 @@ import {
   createDefaultSetting
 } from 'photos/ducks/clustering/settings'
 import {
-  reachabilities,
-  clusteringParameters
+  clusteringParameters,
+  computeClusters
 } from 'photos/ducks/clustering/service'
-import { spatioTemporalScaled } from 'photos/ducks/clustering/metrics'
-import { gradientClustering } from 'photos/ducks/clustering/gradient'
-import {
-  saveClustering,
-  findAutoAlbums,
-  albumsToClusterize,
-  findAlbumsByIds
-} from 'photos/ducks/clustering/albums'
+import { saveClustering, findAutoAlbums } from 'photos/ducks/clustering/albums'
 
 // Returns the photos metadata sorted by date
 const extractInfo = photos => {
@@ -36,7 +29,7 @@ const extractInfo = photos => {
       photo.timestamp = hours
       return photo
     })
-    .sort((pa, pb) => pa.timestamp - pb.timestamp)
+    .sort((pa, pb) => pa.timestamp < pb.timestamp)
 
   return info
 }
@@ -50,11 +43,10 @@ const clusterizePhotos = async (setting, photos) => {
     return []
   }
 
-
-  const reachs = reachabilities(dataset, spatioTemporalScaled, params)
-  const clusters = gradientClustering(dataset, reachs, params)
+  const albums = await findAutoAlbums()
+  const [clusters, albumsToSave] = computeClusters(dataset, albums)
   if (clusters.length > 0) {
-    saveClustering(clusters)
+    saveClustering(clusters, albumsToSave)
   }
 
   // TODO save params

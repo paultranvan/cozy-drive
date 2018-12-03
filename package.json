@@ -28,6 +28,7 @@
     "lint:styles": "stylint src/drive/styles --config ./.stylintrc",
     "lint:js": "eslint '{src,test}/**/*.{js,jsx}'",
     "test": "cozy-scripts test --verbose --coverage --config=jest.config.js",
+    "test:services": "cozy-scripts test --verbose --coverage --config=jest.services.config.js src/photos/ducks/clustering",
     "watch:drive": "npm run watch:drive:browser",
     "watch:drive:browser": "npm run internal:watch -- --env.app=drive --env.target=browser",
     "watch:drive:mobile": "npm run internal:watch -- --env.app=drive --env.target=mobile",

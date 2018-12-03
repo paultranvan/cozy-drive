@@ -1,5 +1,5 @@
 import KNN from './knn'
-import { temporal, spatial } from './metrics'
+import { temporal, spatial, spatioTemporalScaled } from './metrics'
 import {
   MIN_EPS_TEMPORAL,
   MIN_EPS_SPATIAL,
@@ -7,15 +7,19 @@ import {
   DEFAULT_MAX_BOUND,
   COARSE_COEFFICIENT
 } from './consts'
-import { gradientAngle } from './gradient'
+import { gradientAngle, gradientClustering } from './gradient'
 import { defaultParameters } from './settings'
+import { albumsToClusterize } from './albums'
+import { findAlbumsByIds } from './matching'
 
+/**
+ *  Retrieve the parameters used to compute the clustering
+ */
 export const clusteringParameters = (dataset, setting) => {
   const params = defaultParameters(setting)
   if (!params) {
     return null
   }
-
   if (!params.epsTemporal) {
     params.epsTemporal = computeEpsTemporal(dataset, PERCENTILE)
   }
@@ -31,6 +35,33 @@ export const clusteringParameters = (dataset, setting) => {
     params.cosAngle = gradientAngle(epsMax, COARSE_COEFFICIENT)
   }
   return params
+}
+
+/**
+ *  Compute the actual clustering based on the new dataset and the existing albums
+ */
+export const computeClusters = async (dataset, albums, params) => {
+  if (albums && albums.length > 0) {
+    const toClusterize = await albumsToClusterize(albums, dataset)
+    if (toClusterize) {
+      for (const [id, photos] of Object.entries(toClusterize)) {
+        // TODO adapt params to the period
+        const reachs = reachabilities(photos, spatioTemporalScaled, params)
+        const clusters = gradientClustering(photos, reachs, params)
+        if (clusters.length > 0) {
+          const ids = id.split(':')
+          const albumsToSave = findAlbumsByIds(albums, ids)
+          return [clusters, albumsToSave]
+        }
+      }
+    }
+  } else {
+    // No album found: this is an initialization
+    const reachs = reachabilities(dataset, spatioTemporalScaled, params)
+    const clusters = gradientClustering(dataset, reachs, params)
+    return [clusters]
+  }
+  return []
 }
 
 /**
