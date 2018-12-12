@@ -8,7 +8,8 @@ export const prepareDataset = photos => {
     .map(file => {
       const photo = {
         id: file._id || file.id,
-        name: file.name
+        name: file.name,
+        clusterId: file.clusterId
       }
       if (file.metadata) {
         photo.datetime = file.metadata.datetime
