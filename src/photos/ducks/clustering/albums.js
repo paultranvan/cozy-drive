@@ -48,7 +48,9 @@ const addAutoAlbumReferences = async (photos, album) => {
       }
     }
     if (refsIds.length > 0) {
+      console.time('add refs')
       await cozyClient.data.addReferencedFiles(album, refsIds)
+      console.timeEnd('add refs')
       log(
         'info',
         `${refsIds.length} photos clustered into: ${JSON.stringify(album._id)}`
@@ -78,10 +80,12 @@ const removeAutoAlbums = async albums => {
 }
 
 const removeAutoAlbumReferences = async (photos, album) => {
+  console.time('remove refs')
   await cozyClient.data.removeReferencedFiles(album, photos.map(p => p.id))
   for (const photo of photos) {
     photo.clusterId = ''
   }
+  console.timeEnd('remove refs')
 }
 
 export const findAutoAlbums = async () => {

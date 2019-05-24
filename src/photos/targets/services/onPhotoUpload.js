@@ -2,6 +2,7 @@ import { cozyClient, log } from 'cozy-konnector-libs'
 
 import {
   getChanges,
+  getFilesFromCreatedAt,
   getAllPhotos,
   getFilesFromDate
 } from 'photos/ducks/clustering/files'
@@ -34,19 +35,29 @@ import { getMatchingParameters } from 'photos/ducks/clustering/matching'
 
 // Compute the actual clustering based on the new dataset and the existing albums
 const createNewClusters = async (params, clusterAlbums, dataset) => {
+  //console.time('gradient')
   const reachs = reachabilities(dataset, spatioTemporalScaled, params)
   const clusters = gradientClustering(dataset, reachs, params)
+  //console.timeEnd('gradient')
   if (clusters.length > 0) {
-    return saveClustering(clusters, clusterAlbums)
+    //console.time('save')
+    const save = await saveClustering(clusters, clusterAlbums)
+    //console.timeEnd('save')
+    return save
   }
   return 0
 }
 
 // Compute the inital clustering
 const createInitialClusters = async (paramsMode, dataset) => {
+  //console.time('gradient')
   const reachs = reachabilities(dataset, spatioTemporalScaled, paramsMode)
   const clusters = gradientClustering(dataset, reachs, paramsMode)
-  return saveClustering(clusters)
+  //console.timeEnd('gradient')
+  //console.time('save')
+  const save = await saveClustering(clusters)
+  //console.timeEnd('save')
+  return save
 }
 
 // Clusterize the given photos, i.e. organize them depending on metrics
@@ -57,8 +68,12 @@ const clusterizePhotos = async (setting, dataset, albums) => {
   try {
     if (albums && albums.length > 0) {
       // Build the clusterize Map, based on the dataset and existing photos
+      console.time('albums clusterize')
       const clusterize = await albumsToClusterize(dataset, albums)
+      console.timeEnd('albums clusterize')
+      //process.exit(0)
       if (clusterize) {
+        console.time('create clusters')
         for (const [clusterAlbums, photos] of clusterize.entries()) {
           // Retrieve the relevant parameters to compute this cluster
           const params = getMatchingParameters(setting.parameters, photos)
@@ -68,6 +83,7 @@ const clusterizePhotos = async (setting, dataset, albums) => {
             continue
           }
           // Actual clustering
+
           clusteredCount += await createNewClusters(
             paramsMode,
             clusterAlbums,
@@ -75,6 +91,7 @@ const clusterizePhotos = async (setting, dataset, albums) => {
           )
           setting = await updateParamsPeriod(setting, params, dataset)
         }
+        console.timeEnd('create clusters')
       } else {
         return
       }
@@ -86,6 +103,7 @@ const clusterizePhotos = async (setting, dataset, albums) => {
         log('warn', 'No parameters for clustering found')
         return
       }
+
       clusteredCount = await createInitialClusters(paramsMode, dataset)
       setting = await updateParamsPeriod(setting, params, dataset)
     }
@@ -142,15 +160,23 @@ const recomputeParameters = async setting => {
 }
 
 const runClustering = async setting => {
-  const since = setting.lastSeq ? setting.lastSeq : 0
-  const changes = await getChanges(since, CHANGES_RUN_LIMIT)
-  if (changes.photos.length < 1) {
+  //const since = setting.lastSeq ? setting.lastSeq : 0
+  const sinceDate = setting.lastDate ? setting.lastDate : 0
+  //const changes = await getChanges(since, CHANGES_RUN_LIMIT)
+  //console.time('createdat')
+  const photos = await getFilesFromCreatedAt(sinceDate, CHANGES_RUN_LIMIT)
+  //console.timeEnd('createdat')
+  if (photos.length < 1) {
     log('warn', 'No photo found to clusterize')
     return 0
   }
   const albums = await findAutoAlbums()
-  const dataset = prepareDataset(changes.photos, albums)
+  //log('debug', `photo 0 : ${JSON.stringify(photos[0])}`)
+  const dataset = prepareDataset(photos, albums)
+  //log('debug', `dataset 0 : ${JSON.stringify(dataset[0])}`)
+  //console.time('clusterize')
   const result = await clusterizePhotos(setting, dataset, albums)
+  //console.timeEnd('clusterize')
   if (!result) {
     return 0
   }
@@ -163,17 +189,20 @@ const runClustering = async setting => {
   This is unpleasant, but harmless, as no new write will be produced on the
   already clustered files.
  */
-  log('info', `${result.clusteredCount} photos clustered since ${since}`)
+  log('info', `${result.clusteredCount} photos clustered since ${sinceDate}`)
+  const newLastDate = photos[photos.length - 1].attributes.created_at
   setting = await updateSettingStatus(
     result.setting,
     result.clusteredCount,
-    changes
+    newLastDate
   )
-  return changes.photos
+  return photos
 }
 
 const onPhotoUpload = async () => {
   log('info', `Service called with COZY_URL: ${process.env.COZY_URL}`)
+
+  console.time('total')
 
   let setting = await readSetting()
   if (!setting) {
@@ -214,6 +243,7 @@ const onPhotoUpload = async () => {
     restart the clustering from the last run.
   */
   const processedPhotos = await runClustering(setting)
+  //console.log('processed photos : ', processedPhotos)
   if (processedPhotos.length >= CHANGES_RUN_LIMIT) {
     // There are still changes to process: re-launch the service
     const args = {
@@ -222,6 +252,7 @@ const onPhotoUpload = async () => {
         slug: 'photos'
       }
     }
+    console.timeEnd('total')
     await cozyClient.jobs.create('service', args)
   }
 }
