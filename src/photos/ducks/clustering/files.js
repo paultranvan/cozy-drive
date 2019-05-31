@@ -1,32 +1,39 @@
-import { cozyClient, log } from 'cozy-konnector-libs'
+import { cozyClient } from 'cozy-konnector-libs'
 import { DOCTYPE_FILES, DOCTYPE_ALBUMS } from 'drive/lib/doctypes'
 
-export const getChanges = async (lastSeq, limit) => {
-  log('info', `Get changes on files since ${lastSeq}`)
-  const result = await cozyClient.fetchJSON(
-    'GET',
-    `/data/${DOCTYPE_FILES}/_changes?include_docs=true&since=${lastSeq}`
-  )
-  // Filter the changes to only get non-trashed images.
-  const photosChanges = result.results
-    .map(res => {
-      return { doc: res.doc, seq: res.seq }
+export const getFilesFromCreatedAt = async (date, limit) => {
+  const filesIndex = await cozyClient.data.defineIndex(DOCTYPE_FILES, [
+    'created_at',
+    'class',
+    'trashed'
+  ])
+  const selector = {
+    created_at: { $gt: date },
+    class: 'image',
+    trashed: false
+  }
+  // The results are paginated
+  let next = true
+  let skip = 0
+  let files = []
+  while (next) {
+    const result = await cozyClient.files.query(filesIndex, {
+      selector: selector,
+      wholeResponse: true,
+      skip: skip
     })
-    .filter(res => {
-      return (
-        res.doc.class === 'image' &&
-        !res.doc._id.includes('_design') &&
-        !res.doc.trashed
-      )
-    })
-    .slice(0, limit)
-
-  const newLastSeq =
-    photosChanges.length > 0
-      ? photosChanges[photosChanges.length - 1].seq
-      : null
-  const photos = photosChanges.map(photo => photo.doc)
-  return { photos, newLastSeq }
+    files = files.concat(result.data)
+    if (files.length >= limit) {
+      next = false
+      files = files.slice(0, limit)
+    }
+    skip = files.length
+    // NOTE: this is because of https://github.com/cozy/cozy-stack/pull/598
+    if (result.meta.count < Math.pow(2, 31) - 2) {
+      next = false
+    }
+  }
+  return files
 }
 
 export const getFilesFromDate = async date => {

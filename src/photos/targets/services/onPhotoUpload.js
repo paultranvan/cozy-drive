@@ -1,7 +1,7 @@
 import { cozyClient, log } from 'cozy-konnector-libs'
 
 import {
-  getChanges,
+  getFilesFromCreatedAt,
   getAllPhotos,
   getFilesFromDate
 } from 'photos/ducks/clustering/files'
@@ -142,34 +142,26 @@ const recomputeParameters = async setting => {
 }
 
 const runClustering = async setting => {
-  const since = setting.lastSeq ? setting.lastSeq : 0
-  const changes = await getChanges(since, CHANGES_RUN_LIMIT)
-  if (changes.photos.length < 1) {
+  const sinceDate = setting.lastDate ? setting.lastDate : 0
+  const photos = await getFilesFromCreatedAt(sinceDate, CHANGES_RUN_LIMIT)
+  if (photos.length < 1) {
     log('warn', 'No photo found to clusterize')
     return 0
   }
   const albums = await findAutoAlbums()
-  const dataset = prepareDataset(changes.photos, albums)
+  const dataset = prepareDataset(photos, albums)
   const result = await clusterizePhotos(setting, dataset, albums)
   if (!result) {
     return 0
   }
-  /*
-  WARNING: we save the lastSeq retrieved at the beginning of the clustering.
-  However, we might have produced new _changes on files by saving the
-  referenced-by, so they will be computed again at the next run.
-  We cannot save the new lastSeq, as new files might have been uploaded by
-  this time and would be ignored for the next run.
-  This is unpleasant, but harmless, as no new write will be produced on the
-  already clustered files.
- */
-  log('info', `${result.clusteredCount} photos clustered since ${since}`)
+  log('info', `${result.clusteredCount} photos clustered since ${sinceDate}`)
+  const newLastDate = photos[photos.length - 1].attributes.created_at
   setting = await updateSettingStatus(
     result.setting,
     result.clusteredCount,
-    changes
+    newLastDate
   )
-  return changes.photos
+  return photos
 }
 
 const onPhotoUpload = async () => {
