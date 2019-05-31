@@ -78,24 +78,30 @@ export const getFilesByAutoAlbum = async album => {
   album._type = DOCTYPE_ALBUMS
   let files = []
   let next = true
-  let skip = 0
+  let startDocid = ''
+
   while (next) {
-    const result = await cozyClient.data.fetchReferencedFiles(album, {
-      skip: skip,
-      wholeResponse: true
-    })
+    // Use cursor for pagination, much more efficient than skip
+    const key = [DOCTYPE_ALBUMS, album._id]
+    const cursor = [key, startDocid]
+    const result = await cozyClient.data.fetchReferencedFiles(
+      album,
+      { cursor },
+      'id'
+    )
     if (result && result.included) {
-      const includedFiles = result.included.map(included => {
-        const attributes = included.attributes
-        attributes.id = included.id
-        attributes.clusterId = album._id
-        return attributes
+      let included = result.included.map(included => {
+        included.clusterId = album._id
+        return included
       })
-      files = files.concat(includedFiles)
-      skip = files.length
-      if (result.meta.count < includedFiles.length) {
+      if (files.length + included.length < result.meta.count) {
+        // Remove the last element, used as starting point for the next run
+        included = included.slice(0, result.included.length - 1)
+        startDocid = result.included[result.included.length - 1].id
+      } else {
         next = false
       }
+      files = files.concat(included)
     } else {
       next = false
     }
