@@ -103,6 +103,7 @@
     "cozy-client-js": "0.13.0",
     "cozy-device-helper": "1.5.0",
     "cozy-flags": "1.5.1",
+    "cozy-jobs-cli": "^1.8.14",
     "cozy-konnector-libs": "4.11.4",
     "cozy-realtime": "2.0.1",
     "cozy-scripts": "1.11.0",
@@ -118,6 +119,7 @@
     "kd-tree-javascript": "1.0.3",
     "localforage": "1.7.2",
     "lodash": "4.17.11",
+    "microee": "^0.0.6",
     "mime-types": "2.1.19",
     "node-polyglot": "2.3.0",
     "node-uuid": "1.4.8",
@@ -143,6 +145,7 @@
     "redux-raven-middleware": "1.2.0",
     "redux-thunk": "2.3.0",
     "url-polyfill": "1.1.0",
+    "url-search-params-polyfill": "^6.0.0",
     "webpack-node-externals": "1.7.2",
     "whatwg-fetch": "3.0.0"
   }

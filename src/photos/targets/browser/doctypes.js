@@ -15,6 +15,8 @@ class HasManyAlbums extends HasMany {
   }
 
   static query(doc, client, assoc) {
+    console.log('has many albums----')
+
     if (
       !doc.relationships ||
       !doc.relationships.referenced_by ||

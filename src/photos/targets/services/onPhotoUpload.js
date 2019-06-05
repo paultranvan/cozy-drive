@@ -1,10 +1,14 @@
-import { cozyClient, log } from 'cozy-konnector-libs'
+import { cozyClient } from 'cozy-konnector-libs'
+import doctypes from 'photos/targets/browser/doctypes'
+import CozyClient from 'cozy-client'
+import log from 'cozy-logger'
 
 import {
   getChanges,
   getFilesFromCreatedAt,
   getAllPhotos,
-  getFilesFromDate
+  getFilesFromDate,
+  getFilesByAutoAlbum
 } from 'photos/ducks/clustering/files'
 import {
   readSetting,
@@ -202,6 +206,70 @@ const runClustering = async setting => {
 const onPhotoUpload = async () => {
   log('info', `Service called with COZY_URL: ${process.env.COZY_URL}`)
 
+  const options = {
+    schema: doctypes
+  }
+  const client = CozyClient.fromEnv(null, options)
+  //const query = client.find('io.cozy.photos.albums').getById('4f2b50a34e02cae35b7ada687dac4dcb').include(['photos'])
+  console.time('fetch relationships')
+  let allPhotos = []
+  const query = client
+    .find('io.cozy.photos.albums')
+    .getById('4f2b50a34e02cae35b7ada687dac4dcb')
+    .include(['photos'])
+  const resp = await client.query(query)
+
+  let data = client.hydrateDocuments('io.cozy.photos.albums', [resp.data])
+  console.log('data : ', resp.data)
+  const p = await data[0].photos.data
+  allPhotos = allPhotos.concat(p)
+  let nPhotos = 0
+  while (data[0].photos.hasMore) {
+
+    await data[0].photos.fetchMore()
+    const fromState = client.getDocumentFromState(
+      'io.cozy.photos.albums',
+      '4f2b50a34e02cae35b7ada687dac4dcb'
+    )
+    data = client.hydrateDocuments('io.cozy.photos.albums', [fromState])
+    const photos = await data[0].photos.data
+    allPhotos = photos
+    nPhotos = photos.length
+    console.log('photos length : ', allPhotos.length)
+  }
+
+  console.timeEnd('fetch relationships')
+  console.log('results : ', nPhotos)
+
+  let prevPhoto = {
+    metadata: {
+      datatime: ''
+    }
+  }
+  allPhotos.forEach(photo => {
+    console.log(photo)
+    if (photo.metadata.datetime < prevPhoto.metadata.datetime) {
+      console.error('not sorted : ', photo.metadata.datetime, ' < ', prevPhoto.metadata.datetime)
+      process.exit(0)
+    }
+    prevPhoto = photo
+  })
+  console.log('photos length : ', allPhotos.length)
+
+
+
+  // skip:  2185 photos in 14128.358ms (!!!)
+  // cursor: 2185 photos in 7646ms
+  // cursor clientjs : 2185 photos in 5482.458ms
+
+  /*  console.time('fetch clientjs')
+  const album = resp.data
+  console.log('album : ', album)
+  await getFilesByAutoAlbum(album)
+  console.timeEnd('fetch clientjs')
+*/
+
+  /*
   console.time('total')
 
   let setting = await readSetting()
@@ -236,12 +304,7 @@ const onPhotoUpload = async () => {
       log('info', `Setting updated with ${JSON.stringify(newParams)}`)
     }
   }
-  /*
-    NOTE: A service has a limited execution window, defined in the stack config,
-    e.g. 200s. As the clustering of thousands of photos can be time-consuming,
-    we force a CHANGES_RUN_LIMIT to serialize the execution and be able to
-    restart the clustering from the last run.
-  */
+
   const processedPhotos = await runClustering(setting)
   //console.log('processed photos : ', processedPhotos)
   if (processedPhotos.length >= CHANGES_RUN_LIMIT) {
@@ -254,7 +317,7 @@ const onPhotoUpload = async () => {
     }
     console.timeEnd('total')
     await cozyClient.jobs.create('service', args)
-  }
+  }*/
 }
 
 onPhotoUpload()
