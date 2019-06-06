@@ -6,7 +6,7 @@ export const generateAESKey = async ({ algorithm, keyLength } = {}) => {
       length: keyLength || 256
     },
     true, //whether the key is extractable (i.e. can be used in exportKey)
-    ['encrypt', 'decrypt']
+    ['encrypt', 'decrypt', 'wrapKey']
   )
 }
 
