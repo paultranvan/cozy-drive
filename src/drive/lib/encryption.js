@@ -1,3 +1,80 @@
+const stringToArrayBuffer = string => {
+  var encoder = new TextEncoder('utf-8')
+  return encoder.encode(string)
+}
+
+const asDerivableKey = async (
+  baseMaterial,
+  keyDerivationAlgorithm = 'PBKDF2'
+) => {
+  let usableMaterial
+  if (baseMaterial instanceof CryptoKey) {
+    usableMaterial = await window.crypto.subtle.exportKey('raw', baseMaterial)
+  } else {
+    usableMaterial = stringToArrayBuffer(baseMaterial)
+  }
+  return await window.crypto.subtle.importKey(
+    'raw',
+    usableMaterial,
+    { name: keyDerivationAlgorithm },
+    true,
+    ['deriveKey']
+  )
+}
+
+const slowHashing = async (
+  baseKey,
+  saltBuffer,
+  { keyDerivationAlgorithm, iterations, hash } = {},
+  { algorithm, keyLength } = {}
+) => {
+  return await window.crypto.subtle.deriveKey(
+    {
+      name: keyDerivationAlgorithm || 'PBKDF2',
+      salt: saltBuffer,
+      iterations: iterations || 1000,
+      hash: hash || 'SHA-256'
+    },
+    baseKey,
+    {
+      name: algorithm || 'AES-GCM',
+      length: keyLength || 256
+    },
+    true,
+    ['encrypt', 'decrypt', 'wrapKey', 'unwrapKey']
+  )
+}
+
+export const deriveKey = async (password, salt) => {
+  const passwordAsKey = await asDerivableKey(password)
+  const saltBuffer = stringToArrayBuffer(salt)
+  const passwordBuffer = stringToArrayBuffer(password)
+  // Chain 2 key derivations : first, derive a key from a password
+  const preKey = await slowHashing(passwordAsKey, saltBuffer, {
+    iterations: 1000
+  })
+  const key = await asDerivableKey(preKey).then(key => {
+    return slowHashing(key, passwordBuffer, { iterations: 1 })
+  })
+  return key
+}
+
+export const exportKey = async (key, vaultKey) => {
+  return window.crypto.subtle.wrapKey('jwk', key, vaultKey, { name: 'AES-KW' })
+}
+
+export const importKey = async (wrappedKey, vaultKey, { algorithm } = {}) => {
+  return window.crypto.subtle.unwrapKey(
+    'jwk',
+    wrappedKey,
+    vaultKey,
+    'AES-KW',
+    { name: algorithm || 'AES-GCM', length: 256 },
+    true,
+    ['encrypt', 'decrypt', 'wrapKey']
+  )
+}
+
 export const generateAESKey = async ({ algorithm, keyLength } = {}) => {
   // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/generateKey
   return window.crypto.subtle.generateKey(
@@ -6,7 +83,7 @@ export const generateAESKey = async ({ algorithm, keyLength } = {}) => {
       length: keyLength || 256
     },
     true, //whether the key is extractable (i.e. can be used in exportKey)
-    ['encrypt', 'decrypt', 'wrapKey']
+    ['encrypt', 'decrypt', 'wrapKey', 'unwrapKey']
   )
 }
 
