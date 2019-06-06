@@ -1,98 +1,32 @@
-const stringToArrayBuffer = string => {
-  var encoder = new TextEncoder('utf-8')
-  return encoder.encode(string)
-}
-
-const generateKey = async () => {
-  const key = await crypto.generateKey(
+export const generateAESKey = async ({ algorithm, keyLength } = {}) => {
+  return window.crypto.subtle.generateKey(
     {
-      name: 'AES-GCM',
-      length: 256
+      name: algorithm || 'AES-GCM',
+      length: keyLength || 256
     },
     true, //whether the key is extractable (i.e. can be used in exportKey)
-    ['encrypt', 'decrypt', 'wrap', 'unwrap']
+    ['encrypt', 'decrypt']
   )
-  return key
 }
 
-const importAsKey = async str => {
-  const key = await crypto.subtle.importKey(
-    'raw',
-    stringToArrayBuffer(str),
-    { name: 'PBKDF2' },
-    true,
-    ['deriveKey', 'deriveBits']
-  )
-  return key
+export const encryptData = async (key, data, { algorithm } = {}) => {
+  const name = algorithm || 'AES-GCM'
+  // The NIST recommands 96 bits iv for AES-GCM: https://web.cs.ucdavis.edu/~rogaway/ocb/gcm.pdf
+  const iv =
+    name === 'AES-GCM'
+      ? window.crypto.getRandomValues(new Uint8Array(16))
+      : null
+  // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/encrypt
+  const cipher = await crypto.subtle.encrypt({ name, iv }, key, data)
+  return { cipher, iv }
 }
 
-export const deriveKey = async (password, salt) => {
-  const hash = 'SHA-256'
-  const iterations1 = 1000
-  const iterations2 = 1
-  const passAsKey = await importAsKey(password) // need to cast string to cryptoKey
-  const saltBuffer = stringToArrayBuffer(salt)
-  const passwordBuffer = stringToArrayBuffer(password)
-  console.log('etape 1', passAsKey, saltBuffer)
-  // Chain 2 key derivations
-  const preKey = await crypto.subtle.deriveKey(
+export const decryptData = async (key, data, { algorithm, iv } = {}) => {
+  // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/decrypt
+  return window.crypto.subtle.decrypt(
     {
-      name: 'PBKDF2',
-      salt: saltBuffer,
-      iterations: iterations1,
-      hash: hash
-    },
-    passAsKey,
-    { name: 'AES-CBC', length: 256 }, // Key we want
-    true, // Extractable
-    ['encrypt', 'decrypt'] // For new key
-  )
-  console.log('Pre key derived', preKey)
-  // Second derivation
-  const key = await crypto.subtle.deriveKey(
-    {
-      name: 'PBKDF2',
-      salt: passwordBuffer,
-      iterations: iterations2,
-      hash: hash
-    },
-    preKey,
-    { name: 'AES-GCM', length: 256 }, // Key we want
-    true, // Extractable
-    ['encrypt', 'decrypt', 'wrap', 'unwrap'] // For new key
-  )
-  console.log('key derived', key)
-  return key
-}
-
-export const exportKey = async (key, vaultKey) => {
-  return crypto.subtle.exportKey('jwk', key, vaultKey, 'AES-KW')
-}
-
-export const importKey = async (wrappedKey, vaultKey) => {
-  return crypto.subtle.importKey(
-    'jwk',
-    wrappedKey,
-    vaultKey,
-    'AES-KW',
-    { name: 'AES-GCM', length: 256 },
-    true,
-    ['encrypt', 'decrypt', 'wrap', 'unwrap']
-  )
-}
-
-export const encryptData = async (data, key) => {
-  // data is suppose to be an ArrayBuffer
-  // const bits = key
-  // TODO
-  const initializationVector = crypto.getRandomValues()
-
-  return crypto.subtle.encrypt(
-    {
-      name: 'AES-GCM',
-      iv: initializationVector,
-      tagLength: 128,
-      additionalData: ''
+      name: algorithm || 'AES-GCM',
+      iv: iv
     },
     key,
     data
