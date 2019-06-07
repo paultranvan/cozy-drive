@@ -28,11 +28,11 @@ const slowHashing = async (
   { keyDerivationAlgorithm, iterations, hash } = {},
   { algorithm, keyLength } = {}
 ) => {
-  return await window.crypto.subtle.deriveKey(
+  return window.crypto.subtle.deriveKey(
     {
       name: keyDerivationAlgorithm || 'PBKDF2',
       salt: saltBuffer,
-      iterations: iterations || 1000,
+      iterations: iterations || 100000,
       hash: hash || 'SHA-256'
     },
     baseKey,
@@ -51,17 +51,31 @@ export const deriveKey = async (password, salt) => {
   const passwordBuffer = stringToArrayBuffer(password)
   // Chain 2 key derivations : first, derive a key from a password
   const preKey = await slowHashing(passwordAsKey, saltBuffer, {
-    iterations: 1000
+    iterations: 100000
   })
   const key = await asDerivableKey(preKey)
   return slowHashing(key, passwordBuffer, { iterations: 1 })
 }
 
 export const exportKey = async (key, vaultKey) => {
+  /*
+    Way of safe exporting a key by
+    1) encrypting it with the vaultKey using the AES-KW cypher mode
+    2) exporting the result in a standardized format (JWK)
+  */
   return window.crypto.subtle.wrapKey('jwk', key, vaultKey, { name: 'AES-KW' })
 }
 
 export const importKey = async (wrappedKey, vaultKey, { algorithm } = {}) => {
+  /*
+    Way of reading a previously exported/wrapped key. Since the export should
+    have been done in a secure manner, the wrappedKey contains an encrypted 
+    version of the real key. Providing vaultKey allows to decypher it.
+    Other parameters tell WebCrypto the kind of CryptoKey we expect as output:
+    - a key dedicated to a given cypher-mode (default is AES-GCM)
+    - a key that will accept to be wrapped and unwrapped
+    - a key that will be used for encryption and decryption purpose
+  */
   return window.crypto.subtle.unwrapKey(
     'jwk',
     wrappedKey,
@@ -69,7 +83,7 @@ export const importKey = async (wrappedKey, vaultKey, { algorithm } = {}) => {
     'AES-KW',
     { name: algorithm || 'AES-GCM', length: 256 },
     true,
-    ['encrypt', 'decrypt', 'wrapKey']
+    ['encrypt', 'decrypt', 'wrapKey', 'unwrapKey']
   )
 }
 
