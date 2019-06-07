@@ -53,10 +53,8 @@ export const deriveKey = async (password, salt) => {
   const preKey = await slowHashing(passwordAsKey, saltBuffer, {
     iterations: 1000
   })
-  const key = await asDerivableKey(preKey).then(key => {
-    return slowHashing(key, passwordBuffer, { iterations: 1 })
-  })
-  return key
+  const key = await asDerivableKey(preKey)
+  return slowHashing(key, passwordBuffer, { iterations: 1 })
 }
 
 export const exportKey = async (key, vaultKey) => {
