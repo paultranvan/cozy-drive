@@ -13,7 +13,7 @@ const asDerivableKey = async (
   } else {
     usableMaterial = stringToArrayBuffer(baseMaterial)
   }
-  return await window.crypto.subtle.importKey(
+  return window.crypto.subtle.importKey(
     'raw',
     usableMaterial,
     { name: keyDerivationAlgorithm },
