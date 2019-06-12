@@ -4,6 +4,8 @@ import logger from 'lib/logger'
 import { hasSharedParent, isShared } from 'sharing/state'
 import { CozyFile } from 'models'
 import UploadQueue from './UploadQueue'
+import { VAULT_DIR_ID } from 'drive/constants/config'
+import { encryptData, generateAESKey, exportKeyJwk } from 'drive/lib/encryption'
 
 export { UploadQueue }
 
@@ -186,11 +188,49 @@ const createFolder = async (client, name, dirID) => {
   return resp.data
 }
 
+// TODO handle hierarchy when dirID is a sub-dir of the vault
 const uploadFile = async (client, file, dirID) => {
-  const resp = await client
-    .collection('io.cozy.files')
-    .createFile(file, { dirId: dirID })
-  return resp.data
+  if (dirID === VAULT_DIR_ID) {
+    // FileReader is needed to read the file before encryption
+    const fr = new FileReader()
+    fr.onload = async () => {
+      const data = fr.result
+      // Encrypt the file with a newly generated AES key
+      const aesKey = await generateAESKey()
+      const encrypted = await encryptData(aesKey, data)
+      const jwk = await exportKeyJwk(aesKey)
+
+      // Create the metadata object containing the encryption info
+      // TODO encrypt the key with exportKey
+      // TODO: should be in cozy-client
+      const encMetadata = {
+        type: 'io.cozy.files.metadata',
+        attributes: {
+          encryption: {
+            key: jwk,
+            iv: btoa(encrypted.iv)
+          }
+        }
+      }
+      const metadataResp = await client.stackClient.fetchJSON(
+        'POST',
+        '/files/upload/metadata',
+        { data: encMetadata }
+      )
+      const metadataId = metadataResp.data.id
+      const name = file.name
+      const resp = await client
+        .collection('io.cozy.files')
+        .createFile(encrypted.cipher, { name, dirId: dirID, metadataId })
+      return resp.data
+    }
+    fr.readAsArrayBuffer(file)
+  } else {
+    const resp = await client
+      .collection('io.cozy.files')
+      .createFile(file, { dirId: dirID })
+    return resp.data
+  }
 }
 
 /*
