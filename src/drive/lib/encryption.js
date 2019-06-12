@@ -1,22 +1,30 @@
-const stringToArrayBuffer = string => {
+// Encode a string into ArrayBuffer
+export const encodeData = data => {
   var encoder = new TextEncoder('utf-8')
-  return encoder.encode(string)
+  return encoder.encode(data)
 }
 
-const asDerivableKey = async (
-  baseMaterial,
-  keyDerivationAlgorithm = 'PBKDF2'
-) => {
-  let usableMaterial
-  if (baseMaterial instanceof CryptoKey) {
-    usableMaterial = await window.crypto.subtle.exportKey('raw', baseMaterial)
-  } else {
-    usableMaterial = stringToArrayBuffer(baseMaterial)
-  }
+export const exportKeyJwk = async key => {
+  return window.crypto.subtle.exportKey('jwk', key)
+}
+
+/**
+ * Build a CryptoKey from an input data
+ *
+ * @param {string} data      The base material to derive
+ * @param {object} params    Additional parameters
+ * @param {string} algorithm The derivation algorithm. Default is PBKDF2
+ * @returns {CryptoKey}      The derived key
+ */
+const makeDerivableKey = async (data, { algorithm = 'PBKDF2' } = {}) => {
+  const keyData =
+    data instanceof CryptoKey
+      ? await window.crypto.subtle.exportKey('raw', data)
+      : encodeData(data)
   return window.crypto.subtle.importKey(
     'raw',
-    usableMaterial,
-    { name: keyDerivationAlgorithm },
+    keyData,
+    { name: algorithm },
     true,
     ['deriveKey']
   )
@@ -28,6 +36,7 @@ const slowHashing = async (
   { keyDerivationAlgorithm, iterations, hash } = {},
   { algorithm, keyLength } = {}
 ) => {
+  // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/deriveKey
   return window.crypto.subtle.deriveKey(
     {
       name: keyDerivationAlgorithm || 'PBKDF2',
@@ -45,43 +54,67 @@ const slowHashing = async (
   )
 }
 
+/**
+ * Derive an encryption key from a given password
+ *
+ * @param {string} password  The user password
+ * @param {string} salt      A random salt
+ * @returns {CryptoKey}      The derived key
+ */
 export const deriveKey = async (password, salt) => {
-  const passwordAsKey = await asDerivableKey(password)
-  const saltBuffer = stringToArrayBuffer(salt)
-  const passwordBuffer = stringToArrayBuffer(password)
+  const passwordAsKey = await makeDerivableKey(password)
+  const saltBuffer = encodeData(salt)
+  const passwordBuffer = encodeData(password)
   // Chain 2 key derivations : first, derive a key from a password
   const preKey = await slowHashing(passwordAsKey, saltBuffer, {
     iterations: 100000
   })
-  const key = await asDerivableKey(preKey)
+  const key = await makeDerivableKey(preKey)
   return slowHashing(key, passwordBuffer, { iterations: 1 })
 }
 
+/**
+ * Way of safe exporting a key by:
+ *   1) encrypting it with the vaultKey using the AES-KW cypher mode
+ *   2) exporting the result in a standardized format (JWK)
+ *
+ * @param {CryptoKey} key       The key to export
+ * @param {CryptoKey} vaultKey  The key used to encrypt the exported key. It must have the wrapKey property.
+ * @returns {ArrayBuffer}         The derived key
+ */
 export const exportKey = async (key, vaultKey) => {
-  /*
-    Way of safe exporting a key by
-    1) encrypting it with the vaultKey using the AES-KW cypher mode
-    2) exporting the result in a standardized format (JWK)
-  */
+  // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/wrapKey
   return window.crypto.subtle.wrapKey('jwk', key, vaultKey, { name: 'AES-KW' })
 }
 
-export const importKey = async (wrappedKey, vaultKey, { algorithm } = {}) => {
-  /*
-    Way of reading a previously exported/wrapped key. Since the export should
-    have been done in a secure manner, the wrappedKey contains an encrypted 
-    version of the real key. Providing vaultKey allows to decypher it.
-    Other parameters tell WebCrypto the kind of CryptoKey we expect as output:
-    - a key dedicated to a given cypher-mode (default is AES-GCM)
-    - a key that will accept to be wrapped and unwrapped
-    - a key that will be used for encryption and decryption purpose
-  */
+/**
+ *  Way of reading a previously exported/wrapped key. Since the export should
+ *  have been done in a secure manner, the wrappedKey contains an encrypted
+ *  version of the real key. Providing vaultKey allows to decypher it.
+ *  Other parameters tell WebCrypto the kind of CryptoKey we expect as output:
+ *    - a key dedicated to a given cypher-mode (default is AES-GCM)
+ *    - a key that will accept to be wrapped and unwrapped
+ *    - a key that will be used for encryption and decryption purpose
+ *
+ * @param {ArrayBuffer} wrappedKey  The key to import
+ * @param {CryptoKey} vaultKey      The key used to encrypt the imported key. It must have the unwrapKey property.
+ * @param {object} params           Additional parameters
+ * @param {string} algorithm        The key algorithm. Default is "AES-GCM"
+ * @param {number} length           The key length. Default is 256
+ * @returns {CryptoKey}             The derived key
+ */
+export const importKey = async (
+  wrappedKey,
+  vaultKey,
+  { algorithm, length } = {}
+) => {
+  // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/unwrapKey
   return window.crypto.subtle.unwrapKey(
     'jwk',
     wrappedKey,
     vaultKey,
     'AES-KW',
-    { name: algorithm || 'AES-GCM', length: 256 },
+    { name: algorithm || 'AES-GCM', length: length || 256 },
     true,
     ['encrypt', 'decrypt', 'wrapKey', 'unwrapKey']
   )
