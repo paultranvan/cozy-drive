@@ -233,26 +233,18 @@ const uploadFile = async (client, file, dirID) => {
 
       // Create the metadata object containing the encryption info
       // TODO encrypt the key with exportKey
-      // TODO: should be in cozy-client
-      const encMetadata = {
-        type: 'io.cozy.files.metadata',
-        attributes: {
-          encryption: {
-            key: jwk,
-            iv: btoa(encrypted.iv)
-          }
-        }
+      const encryption = {
+        key: jwk,
+        iv: btoa(encrypted.iv)
       }
-      const metadataResp = await client.stackClient.fetchJSON(
-        'POST',
-        '/files/upload/metadata',
-        { data: encMetadata }
-      )
-      const metadataId = metadataResp.data.id
       const name = file.name
       const resp = await client
         .collection('io.cozy.files')
-        .createFile(encrypted.cipher, { name, dirId: dirID, metadataId })
+        .createFile(encrypted.cipher, {
+          name,
+          dirId: dirID,
+          metadata: encryption
+        })
       return resp.data
     }
     fr.readAsArrayBuffer(file)
