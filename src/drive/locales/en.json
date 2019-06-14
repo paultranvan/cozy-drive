@@ -635,5 +635,14 @@
     "current_version": "Current version",
     "loading": "Loading...",
     "noFileVersionEnabled": "Your Cozy will soon be able to archive the last modifications of a file to never risk losing them again"
+  },
+  "encryption" : {
+    "passphrase" : {
+      "title": "Password",
+      "desc" : "Enter your password to access your encrypted files",
+      "submit": "Submit",
+      "cancel": "Cancel",
+      "success": "Your vault is now unlocked!"
+    }
   }
 }

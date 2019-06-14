@@ -7,6 +7,9 @@ import { queryConnect, models, withClient, Q } from 'cozy-client'
 
 import { translate } from 'cozy-ui/transpiled/react/I18n'
 import SharingProvider from 'cozy-sharing'
+import { showModal } from 'react-cozy-helpers'
+import Passphrase from 'drive/web/modules/drive/Passphrase'
+import { VAULT_DIR_ID } from 'drive/constants/config'
 import RealtimeFiles from './RealtimeFiles'
 import {
   openFolder,
@@ -162,7 +165,22 @@ const mapDispatchToProps = (dispatch, ownProps) => ({
   fetchRecentFiles: () => dispatch(fetchRecentFiles()),
   fetchMoreFiles: (folderId, skip, limit) =>
     dispatch(fetchMoreFiles(folderId, skip, limit)),
-  fetchFolder: folderId => dispatch(openFolder(folderId)),
+  fetchFolder: folderId => {
+    // TODO: this should check the hierarchy
+    if (folderId === VAULT_DIR_ID) {
+      dispatch(
+        showModal(
+          <Passphrase
+            onSubmitPassphrase={() => {
+              // TODO dispatch masterEncryptionKey
+              // TODO openFolder only if ok
+            }}
+          />
+        )
+      )
+    }
+    dispatch(openFolder(folderId))
+  },
   fetchFolderFromTrash: folderId =>
     dispatch(
       openFolder(
