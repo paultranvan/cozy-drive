@@ -534,5 +534,14 @@
     "contact": {
       "defaultDisplayName": "Anonymous"
     }
+  },
+  "encryption" : {
+    "passphrase" : {
+      "title": "Password",
+      "desc" : "Enter your password to access your encrypted files",
+      "submit": "Submit",
+      "cancel": "Cancel",
+      "success": "Your vault is now unlocked!"
+    }
   }
 }
