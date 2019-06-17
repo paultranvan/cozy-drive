@@ -168,17 +168,9 @@ const mapDispatchToProps = (dispatch, ownProps) => ({
   fetchFolder: folderId => {
     // TODO: this should check the hierarchy
     if (folderId === VAULT_DIR_ID) {
-      dispatch(
-        showModal(
-          <Passphrase
-            onSubmitPassphrase={() => {
-              // TODO dispatch masterEncryptionKey
-              // TODO openFolder only if ok
-            }}
-          />
-        )
-      )
+      dispatch(showModal(<Passphrase />))
     }
+    // TODO do not open if password vault is incorrect
     dispatch(openFolder(folderId))
   },
   fetchFolderFromTrash: folderId =>
