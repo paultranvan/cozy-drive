@@ -19,7 +19,8 @@ import {
   CREATE_FOLDER_SUCCESS,
   ADD_FILE,
   UPDATE_FILE,
-  DELETE_FILE
+  DELETE_FILE,
+  DERIVE_ENCRYPTION_KEY
 } from './actions'
 
 import {
@@ -273,6 +274,16 @@ const lastFetch = (state = null, action) => {
   }
 }
 
+// reducer for encryption
+const encryption = (state = null, action) => {
+  switch(action.type) {
+    case DERIVE_ENCRYPTION_KEY:
+      return action.key
+    default:
+      return state
+  }
+}
+
 const deduplicateCreateDeleteActions = originalReducer => {
   const created = []
   const deleted = []
@@ -335,7 +346,8 @@ export default combineReducers({
   sort,
   files,
   fetchStatus,
-  lastFetch
+  lastFetch,
+  encryption
 })
 
 // TODO: temp

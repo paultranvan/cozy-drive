@@ -26,5 +26,6 @@ export {
   trashFiles,
   downloadFiles,
   exportFilesNative,
-  openFileWith
+  openFileWith,
+  deriveEncryptionKey
 } from './actions'
