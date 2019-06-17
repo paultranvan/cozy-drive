@@ -19,6 +19,8 @@ import { showModal } from 'react-cozy-helpers'
 import Alerter from 'cozy-ui/transpiled/react/Alerter'
 import QuotaAlert from 'drive/web/modules/upload/QuotaAlert'
 import { getOpenedFolderId } from 'drive/web/modules/navigation/duck'
+import { deriveKey } from 'drive/lib/encryption'
+import { ROOT_DIR_ID, TRASH_DIR_ID } from 'drive/constants/config.js'
 
 export const OPEN_FOLDER = 'OPEN_FOLDER'
 export const OPEN_FOLDER_SUCCESS = 'OPEN_FOLDER_SUCCESS'
@@ -49,6 +51,7 @@ export const ADD_FILE = 'ADD_FILE'
 export const UPDATE_FILE = 'UPDATE_FILE'
 export const DELETE_FILE = 'DELETE_FILE'
 export const TOGGLE_THUMBNAIL_SIZE = 'TOGGLE_THUMBNAIL_SIZE'
+export const DERIVE_ENCRYPTION_KEY = 'DERIVE_ENCRYPTION_KEY'
 
 const HTTP_CODE_CONFLICT = 409
 
@@ -523,5 +526,14 @@ export const openFileWith = (id, filename) => {
     }
   }
 }
-
+export const deriveEncryptionKey = passphrase => {
+  return async (dispatch, _, { client }) => {
+    const salt = client.getStackClient().uri
+    const key = await deriveKey(passphrase, salt)
+    return dispatch({
+      type: DERIVE_ENCRYPTION_KEY,
+      key
+    })
+  }
+}
 export const toggleThumbnailSize = () => ({ type: TOGGLE_THUMBNAIL_SIZE })

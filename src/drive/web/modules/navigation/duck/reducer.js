@@ -20,7 +20,8 @@ import {
   ADD_FILE,
   UPDATE_FILE,
   DELETE_FILE,
-  TOGGLE_THUMBNAIL_SIZE
+  TOGGLE_THUMBNAIL_SIZE,
+  DERIVE_ENCRYPTION_KEY
 } from './actions'
 
 import {
@@ -406,6 +407,16 @@ const lastFetch = (state = null, action) => {
   }
 }
 
+// reducer for encryption
+const encryption = (state = null, action) => {
+  switch(action.type) {
+    case DERIVE_ENCRYPTION_KEY:
+      return action.key
+    default:
+      return state
+  }
+}
+
 const deduplicateCreateDeleteActions = originalReducer => {
   const created = []
   const deleted = []
@@ -480,7 +491,8 @@ export default combineReducers({
   fetchStatus,
   lastFetch,
   currentView,
-  thumbnailSize
+  thumbnailSize,
+  encryption
 })
 
 // TODO: temp
