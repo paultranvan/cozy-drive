@@ -17,6 +17,7 @@ import { addToUploadQueue } from 'drive/web/modules/upload'
 import { showModal } from 'react-cozy-helpers'
 import Alerter from 'cozy-ui/react/Alerter'
 import QuotaAlert from 'drive/web/modules/upload/QuotaAlert'
+import { deriveKey } from 'drive/lib/encryption'
 
 import { ROOT_DIR_ID, TRASH_DIR_ID } from 'drive/constants/config.js'
 
@@ -48,6 +49,7 @@ export const OPEN_FILE_WITH = 'OPEN_FILE_WITH'
 export const ADD_FILE = 'ADD_FILE'
 export const UPDATE_FILE = 'UPDATE_FILE'
 export const DELETE_FILE = 'DELETE_FILE'
+export const DERIVE_ENCRYPTION_KEY = 'DERIVE_ENCRYPTION_KEY'
 
 const HTTP_CODE_CONFLICT = 409
 
@@ -500,5 +502,16 @@ export const openFileWith = (id, filename) => {
     } else {
       Alerter.error('mobile.error.open_with.noapp')
     }
+  }
+}
+
+export const deriveEncryptionKey = passphrase => {
+  return async (dispatch, _, { client }) => {
+    const salt = client.getStackClient().uri
+    const key = await deriveKey(passphrase, salt)
+    return dispatch({
+      type: DERIVE_ENCRYPTION_KEY,
+      key
+    })
   }
 }
