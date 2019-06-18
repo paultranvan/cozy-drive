@@ -1,10 +1,13 @@
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
+import { compose } from 'redux'
 import Modal, { ModalContent } from 'cozy-ui/react/Modal'
 import Alerter from 'cozy-ui/react/Alerter'
 import { translate } from 'cozy-ui/react/I18n'
 import { Input } from 'cozy-ui/react'
 import { deriveEncryptionKey } from 'drive/web/modules/navigation/duck'
+import { withClient } from 'cozy-client'
+
 
 class Passphrase extends Component {
   constructor(props) {
@@ -14,9 +17,14 @@ class Passphrase extends Component {
     }
   }
 
+
   handleChange(e) {
     const passphrase = e.target.value
     this.setState({ passphrase })
+  }
+
+  getLoginPage() {
+
   }
 
   async onSubmitPassphrase() {
@@ -29,7 +37,8 @@ class Passphrase extends Component {
   }
 
   render() {
-    const { t } = this.props
+    const { t, client } = this.props
+    console.log('client : ', client)
     return (
       <Modal
         title={t('encryption.passphrase.title')}
@@ -49,4 +58,4 @@ class Passphrase extends Component {
   }
 }
 
-export default translate()(connect()(Passphrase))
+export default compose(translate(), (connect(), withClient, (Passphrase))

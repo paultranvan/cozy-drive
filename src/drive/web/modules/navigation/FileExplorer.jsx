@@ -5,6 +5,7 @@ import { translate } from 'cozy-ui/react/I18n'
 import SharingProvider from 'sharing'
 import { showModal } from 'react-cozy-helpers'
 import Passphrase from 'drive/web/modules/drive/Passphrase'
+import { Authentication } from '../../../../authentication/src/Standalone'
 import { VAULT_DIR_ID } from 'drive/constants/config'
 
 import RealtimeFiles from './RealtimeFiles'
@@ -95,6 +96,7 @@ const mapDispatchToProps = (dispatch, ownProps) => ({
   fetchFolder: folderId => {
     // TODO: this should check the hierarchy
     if (folderId === VAULT_DIR_ID) {
+      //dispatch(showModal(<Passphrase />))
       dispatch(showModal(<Passphrase />))
     }
     // TODO do not open if password vault is incorrect
