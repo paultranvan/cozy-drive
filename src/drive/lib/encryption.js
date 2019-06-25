@@ -1,12 +1,39 @@
+import { encode, decode } from 'base64-arraybuffer'
+
 // Encode a string into ArrayBuffer
 export const encodeData = data => {
   var encoder = new TextEncoder('utf-8')
   return encoder.encode(data)
 }
 
+export const encodeArrayBuffer = (buff) => {
+  return encode(buff)
+}
+
+export const decodeArrayBuffer = (str) => {
+  return decode(str)
+}
+
+export const decodeData = data => {
+
+}
+
 export const exportKeyJwk = async key => {
   return window.crypto.subtle.exportKey('jwk', key)
 }
+
+export const importKeyJwk = async (key, { algorithm, length } = {}) => {
+  // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/unwrapKey
+  return window.crypto.subtle.importKey(
+    'jwk',
+    key,
+    { name: algorithm || 'AES-GCM', length: length || 256 },
+    true,
+    ['encrypt', 'decrypt', 'wrapKey', 'unwrapKey']
+  )
+}
+
+
 
 /**
  * Build a CryptoKey from an input data
@@ -25,7 +52,7 @@ const makeDerivableKey = async (data, { algorithm = 'PBKDF2' } = {}) => {
     'raw',
     keyData,
     { name: algorithm },
-    true,
+    true, //whether the key is extractable
     ['deriveKey']
   )
 }
@@ -46,11 +73,11 @@ const slowHashing = async (
     },
     baseKey,
     {
-      name: algorithm || 'AES-GCM',
+      name: algorithm || 'AES-KW',
       length: keyLength || 256
     },
-    true,
-    ['encrypt', 'decrypt', 'wrapKey', 'unwrapKey']
+    true, //whether the key is extractable
+    ['wrapKey', 'unwrapKey']
   )
 }
 
@@ -80,12 +107,54 @@ export const deriveKey = async (password, salt) => {
  *   2) exporting the result in a standardized format (JWK)
  *
  * @param {CryptoKey} key       The key to export
- * @param {CryptoKey} vaultKey  The key used to encrypt the exported key. It must have the wrapKey property.
+ * @param {CryptoKey} wrappingkey  The key used to encrypt the exported key. It must have the wrapKey property.
  * @returns {ArrayBuffer}         The derived key
  */
-export const exportKey = async (key, vaultKey) => {
+export const wrapVaultKey = async (key, wrappingkey) => {
   // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/wrapKey
-  return window.crypto.subtle.wrapKey('jwk', key, vaultKey, { name: 'AES-KW' })
+  // Note the JWK format is not compatible with AES-KW
+  /*const iv = window.crypto.getRandomValues(new Uint8Array(16))
+  return window.crypto.subtle.wrapKey('jwk', key, wrappingkey, {
+    name: 'AES-GCM',
+    length: 256,
+    iv: iv
+  })*/
+  return window.crypto.subtle.wrapKey('raw', key, wrappingkey, {
+    name: 'AES-KW'
+  })
+}
+
+export const exportVaultKey = async key => {
+  return window.crypto.subtle.exportKey('jwk', key)
+}
+
+export const unwrapVaultKey = async (wrappedKey, unwrappingKey) => {
+  return window.crypto.subtle.unwrapKey(
+    'raw',
+    wrappedKey,
+    unwrappingKey,
+    {
+      name: 'AES-KW'
+    },
+    {
+      name: 'AES-GCM'
+    },
+    true,
+    ['encrypt', 'decrypt']
+  )
+}
+
+export const importVaultKey = async keyData => {
+  return window.crypto.subtle.importKey(
+    'jwk',
+    keyData,
+    {
+      name: 'AES-KW',
+      length: 256
+    },
+    true,
+    ['wrapKey', 'unwrapKey']
+  )
 }
 
 /**
@@ -133,6 +202,29 @@ export const generateAESKey = async ({ algorithm, keyLength } = {}) => {
   )
 }
 
+export const generateVaultKey = async () => {
+  // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/generateKey
+
+  return window.crypto.subtle.generateKey(
+    {
+      name: 'AES-KW',
+      length: 256
+    },
+    true, //whether the key is extractable (i.e. can be used in exportKey)
+    ['wrapKey', 'unwrapKey']
+  )
+}
+
+/**
+  Encrypt data with the given key
+
+  * @param {CryptoKey} key      The encryption key
+  * @param {ArrayBuffer} data   The data to encrypt
+  * @param {object} params           Additional parameters
+  * @param {string} algorithm        The key algorithm. Default is "AES-GCM"
+  * @returns {object}
+
+*/
 export const encryptData = async (key, data, { algorithm } = {}) => {
   const name = algorithm || 'AES-GCM'
   // The NIST recommands 96 bits iv for AES-GCM: https://web.cs.ucdavis.edu/~rogaway/ocb/gcm.pdf

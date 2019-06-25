@@ -17,7 +17,19 @@ import { addToUploadQueue } from 'drive/web/modules/upload'
 import { showModal } from 'react-cozy-helpers'
 import Alerter from 'cozy-ui/react/Alerter'
 import QuotaAlert from 'drive/web/modules/upload/QuotaAlert'
-import { deriveKey } from 'drive/lib/encryption'
+import {
+  deriveKey,
+  generateVaultKey,
+  wrapVaultKey,
+  importVaultKey,
+  generateAESKey,
+  unwrapVaultKey,
+  exportVaultKey,
+  importKeyJwk,
+  encodeData,
+  decryptData,
+  decodeArrayBuffer
+} from 'drive/lib/encryption'
 
 import { ROOT_DIR_ID, TRASH_DIR_ID } from 'drive/constants/config.js'
 
@@ -49,7 +61,8 @@ export const OPEN_FILE_WITH = 'OPEN_FILE_WITH'
 export const ADD_FILE = 'ADD_FILE'
 export const UPDATE_FILE = 'UPDATE_FILE'
 export const DELETE_FILE = 'DELETE_FILE'
-export const DERIVE_ENCRYPTION_KEY = 'DERIVE_ENCRYPTION_KEY'
+export const DECRYPT_VAULT_ENCRYPTION_KEY = 'DECRYPT_ENCRYPTION_KEY'
+export const CREATE_VAULT_ENCRYPTION_KEY = 'CREATE_ENCRYPTION_KEY'
 
 const HTTP_CODE_CONFLICT = 409
 
@@ -412,6 +425,8 @@ export const downloadFileError = error => {
 }
 
 export const downloadFiles = files => {
+  console.log('downaload files ?')
+
   const meta = META_DEFAULTS
   return async dispatch => {
     if (files.length === 1 && !isDirectory(files[0])) {
@@ -426,13 +441,28 @@ export const downloadFiles = files => {
 }
 
 const downloadFile = (file, meta) => {
+  console.log('downaload ?')
   return async dispatch => {
-    const downloadURL = await cozy.client.files
-      .getDownloadLinkById(file.id)
-      .catch(error => {
-        Alerter.error(downloadFileError(error))
-        throw error
-      })
+    const iv = decodeArrayBuffer(file.metadata.iv)
+    console.log('iv : ', iv)
+    const keyJwk = file.metadata.key//encodeData(file.metadata.key)
+    console.log('key jwk : ', keyJwk)
+    const key = await importKeyJwk(keyJwk)
+    console.log('key : ', key)
+    console.log('iv : ', iv)
+    const response = await cozy.client.files.downloadById(file._id)
+    .catch(error => {
+      Alerter.error(downloadFileError(error))
+      throw error
+    })
+    console.log('dl file ', response)
+    const buffer =  await response.arrayBuffer()
+
+    console.log('buff get : ', buffer)
+    const dec = await decryptData(key, buffer, { iv })
+    //TODO do something with this
+    console.log('decrypted : ', dec)
+
     const filename = file.name
 
     forceFileDownload(`${cozy.client._url}${downloadURL}?Dl=1`, filename)
@@ -505,13 +535,91 @@ export const openFileWith = (id, filename) => {
   }
 }
 
-export const deriveEncryptionKey = passphrase => {
+export const decryptVaultEncryptionKey = passphrase => {
   return async (dispatch, _, { client }) => {
+    // TODO derive secret key + get encrypted vault key + decrypt it
     const salt = client.getStackClient().uri
     const key = await deriveKey(passphrase, salt)
     return dispatch({
-      type: DERIVE_ENCRYPTION_KEY,
+      type: DECRYPT_VAULT_ENCRYPTION_KEY,
       key
+    })
+  }
+}
+
+export const createVaultEncryptionKey = passphrase => {
+  console.log('create vault')
+  return async (dispatch, _, { client }) => {
+    const salt = client.getStackClient().uri
+    const secretKey = await deriveKey(passphrase, salt)
+    console.log('secret key : ', secretKey)
+    //const vaultKey = await generateVaultKey({ algorithm: 'AES-KW' })
+    const vaultKey = await generateVaultKey()
+    console.log('vault key : ', vaultKey)
+    console.log('b64 vault key : ', btoa(vaultKey))
+    const wrapedVaultKey = await wrapVaultKey(vaultKey, secretKey)
+    console.log('wraped key : ', wrapedVaultKey)
+    const importedVaultKey = await unwrapVaultKey(wrapedVaultKey, secretKey)
+    console.log('import key : ', importedVaultKey)
+    const exportedKey = await exportVaultKey(vaultKey)
+    console.log('export key : ', exportedKey)
+
+    // save it
+    const settings = await client.query(
+      client.find('io.cozy.settings').getById('io.cozy.settings.instance')
+    )
+    let encryption
+
+    const k = btoa(wrapedVaultKey)
+    /* TODO this miw JWE and JWK
+    maybe change for Flattened JWE JSON Serialization Syntax?
+     https://tools.ietf.org/html/rfc7516#section-7.2.2
+    settings:
+     header : {
+     alg: A256KW
+     enc: A256KW
+     kid: 1234
+    },
+    encrypted_key: b64(enc_key)
+
+    files :
+
+    header : {
+      alg: A256KW
+      enc: A256CBC
+      kid: 1234
+    }
+    encrypted_key: b64(enc_key)
+    iv: b64(iv)
+
+    */
+    const jwe = { ...exportedKey, k, enc: 'A256KW' }
+    /*  const jwe = {
+      alg: 'A256KW',
+      enc: 'A256KW',
+      raw: btoa(wrapedVaultKey)
+    }*/
+
+    if (settings.encryption && settings.encryption.keys) {
+      settings.encryption.keys.push(jwe)
+      const keys = settings.encryption.keys
+      encryption = { ...settings.encryption, keys }
+    } else {
+      encryption = {
+        keys: [jwe]
+      }
+    }
+    const newSettings = { ...settings, encryption }
+
+    console.log('settings : ', newSettings)
+
+    /*await client.update(settings).catch(error => {
+      throw error
+    })*/
+
+    return dispatch({
+      type: CREATE_VAULT_ENCRYPTION_KEY,
+      key: vaultKey
     })
   }
 }
