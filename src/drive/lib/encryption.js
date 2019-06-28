@@ -1,4 +1,4 @@
-import { encode, decode } from 'base64-arraybuffer'
+import { encode, decode } from 'base64-arraybuffer'
 
 // Encode a string into ArrayBuffer
 export const encodeData = data => {
@@ -6,17 +6,15 @@ export const encodeData = data => {
   return encoder.encode(data)
 }
 
-export const encodeArrayBuffer = (buff) => {
+export const encodeArrayBuffer = buff => {
   return encode(buff)
 }
 
-export const decodeArrayBuffer = (str) => {
+export const decodeArrayBuffer = str => {
   return decode(str)
 }
 
-export const decodeData = data => {
-
-}
+export const decodeData = data => {}
 
 export const exportKeyJwk = async key => {
   return window.crypto.subtle.exportKey('jwk', key)
@@ -32,8 +30,6 @@ export const importKeyJwk = async (key, { algorithm, length } = {}) => {
     ['encrypt', 'decrypt', 'wrapKey', 'unwrapKey']
   )
 }
-
-
 
 /**
  * Build a CryptoKey from an input data
@@ -211,7 +207,7 @@ export const generateVaultKey = async () => {
       length: 256
     },
     true, //whether the key is extractable (i.e. can be used in exportKey)
-    ['wrapKey', 'unwrapKey']
+    ['encrypt', 'decrypt', 'wrapKey', 'unwrapKey']
   )
 }
 
