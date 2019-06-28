@@ -16,21 +16,6 @@ export const decodeArrayBuffer = str => {
 
 export const decodeData = data => {}
 
-export const exportKeyJwk = async key => {
-  return window.crypto.subtle.exportKey('jwk', key)
-}
-
-export const importKeyJwk = async (key, { algorithm, length } = {}) => {
-  // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/unwrapKey
-  return window.crypto.subtle.importKey(
-    'jwk',
-    key,
-    { name: algorithm || 'AES-GCM', length: length || 256 },
-    true,
-    ['encrypt', 'decrypt', 'wrapKey', 'unwrapKey']
-  )
-}
-
 /**
  * Build a CryptoKey from an input data
  *
@@ -180,6 +165,43 @@ export const importKey = async (
     wrappedKey,
     vaultKey,
     'AES-KW',
+    { name: algorithm || 'AES-GCM', length: length || 256 },
+    true,
+    ['encrypt', 'decrypt', 'wrapKey', 'unwrapKey']
+  )
+}
+
+export const exportKey = async (key, wrappingkey, iv = undefined) => {
+  //
+  let keyData = await window.crypto.subtle.exportKey('jwk', key)
+  let wrappingKeyData = await window.crypto.subtle.exportKey('jwk', wrappingkey)
+  const encryptedKey = encode(
+    await window.crypto.subtle.wrapKey('raw', key, wrappingkey, {
+      name: 'AES-KW'
+    })
+  )
+  const header = { alg: wrappingKeyData.alg, enc: keyData.alg }
+  // TODO : handle key IDs
+  const kid = 1
+  let exportedKey = { header, encryptedKey, kid }
+  if (iv) {
+    exportedKey = {
+      ...exportedKey,
+      iv: encode(iv)
+    }
+  }
+  return exportedKey
+}
+
+export const exportKeyJwk = async key => {
+  return window.crypto.subtle.exportKey('jwk', key)
+}
+
+export const importKeyJwk = async (key, { algorithm, length } = {}) => {
+  // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/unwrapKey
+  return window.crypto.subtle.importKey(
+    'jwk',
+    key,
     { name: algorithm || 'AES-GCM', length: length || 256 },
     true,
     ['encrypt', 'decrypt', 'wrapKey', 'unwrapKey']
