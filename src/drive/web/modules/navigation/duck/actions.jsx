@@ -28,7 +28,8 @@ import {
   importKeyJwk,
   encodeData,
   decryptData,
-  decodeArrayBuffer
+  decodeArrayBuffer,
+  exportKey
 } from 'drive/lib/encryption'
 
 import { ROOT_DIR_ID, TRASH_DIR_ID } from 'drive/constants/config.js'
@@ -445,18 +446,19 @@ const downloadFile = (file, meta) => {
   return async dispatch => {
     const iv = decodeArrayBuffer(file.metadata.iv)
     console.log('iv : ', iv)
-    const keyJwk = file.metadata.key//encodeData(file.metadata.key)
+    const keyJwk = file.metadata.key //encodeData(file.metadata.key)
     console.log('key jwk : ', keyJwk)
     const key = await importKeyJwk(keyJwk)
     console.log('key : ', key)
     console.log('iv : ', iv)
-    const response = await cozy.client.files.downloadById(file._id)
-    .catch(error => {
-      Alerter.error(downloadFileError(error))
-      throw error
-    })
+    const response = await cozy.client.files
+      .downloadById(file._id)
+      .catch(error => {
+        Alerter.error(downloadFileError(error))
+        throw error
+      })
     console.log('dl file ', response)
-    const buffer =  await response.arrayBuffer()
+    const buffer = await response.arrayBuffer()
 
     console.log('buff get : ', buffer)
     const dec = await decryptData(key, buffer, { iv })
@@ -548,70 +550,50 @@ export const decryptVaultEncryptionKey = passphrase => {
 }
 
 export const createVaultEncryptionKey = passphrase => {
+  console.clear()
   console.log('create vault')
   return async (dispatch, _, { client }) => {
     const salt = client.getStackClient().uri
+    console.log('Salt is', salt)
     const secretKey = await deriveKey(passphrase, salt)
     console.log('secret key : ', secretKey)
-    //const vaultKey = await generateVaultKey({ algorithm: 'AES-KW' })
-    const vaultKey = await generateVaultKey()
+    const vaultKey = await generateAESKey({ algorithm: 'AES-KW' })
+    // const vaultKey = await generateVaultKey()
     console.log('vault key : ', vaultKey)
-    console.log('b64 vault key : ', btoa(vaultKey))
-    const wrapedVaultKey = await wrapVaultKey(vaultKey, secretKey)
-    console.log('wraped key : ', wrapedVaultKey)
-    const importedVaultKey = await unwrapVaultKey(wrapedVaultKey, secretKey)
-    console.log('import key : ', importedVaultKey)
-    const exportedKey = await exportVaultKey(vaultKey)
-    console.log('export key : ', exportedKey)
+    // Now store it in a safe manner
+    const jwe = await exportKey(vaultKey, secretKey)
+    console.log('vault key as JWE: ', jwe)
+
+    // const vaultKeyBin = btoa(window.crypto.subtle.exportKey('raw', vaultKey))
+    // console.log('b64 of the vault key-array')
+    // console.log('b64 vault key : ', btoa(vaultKey))
+    // const wrapedVaultKey = await wrapVaultKey(vaultKey, secretKey)
+    // console.log('wraped key : ', wrapedVaultKey)
+    // const importedVaultKey = await unwrapVaultKey(wrapedVaultKey, secretKey)
+    // console.log('import key : ', importedVaultKey)
+    // const exportedKey = await exportVaultKey(vaultKey)
+    // console.log('export key : ', exportedKey)
+    // console.log('/////////////////////////////////////')
+    // const exportedKeyJWE = await exportKey(vaultKey, secretKey)
+    // console.log('wraped key JWE : ', exportedKeyJWE)
 
     // save it
     const settings = await client.query(
       client.find('io.cozy.settings').getById('io.cozy.settings.instance')
     )
+
     let encryption
-
-    const k = btoa(wrapedVaultKey)
-    /* TODO this miw JWE and JWK
-    maybe change for Flattened JWE JSON Serialization Syntax?
-     https://tools.ietf.org/html/rfc7516#section-7.2.2
-    settings:
-     header : {
-     alg: A256KW
-     enc: A256KW
-     kid: 1234
-    },
-    encrypted_key: b64(enc_key)
-
-    files :
-
-    header : {
-      alg: A256KW
-      enc: A256CBC
-      kid: 1234
-    }
-    encrypted_key: b64(enc_key)
-    iv: b64(iv)
-
-    */
-    const jwe = { ...exportedKey, k, enc: 'A256KW' }
-    /*  const jwe = {
-      alg: 'A256KW',
-      enc: 'A256KW',
-      raw: btoa(wrapedVaultKey)
-    }*/
-
-    if (settings.encryption && settings.encryption.keys) {
-      settings.encryption.keys.push(jwe)
-      const keys = settings.encryption.keys
-      encryption = { ...settings.encryption, keys }
+    if (settings.encryption || false) {
+      encryption = settings.encryption
+      encryption.push(jwe)
     } else {
-      encryption = {
-        keys: [jwe]
-      }
+      encryption = { keys: [jwe] }
     }
-    const newSettings = { ...settings, encryption }
 
-    console.log('settings : ', newSettings)
+    const updatedSettings = { ...settings.data, encryption }
+    // let encryption
+    console.log('settings', settings)
+    console.log('and updated settings', updatedSettings)
 
     /*await client.update(settings).catch(error => {
       throw error
