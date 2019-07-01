@@ -65,6 +65,7 @@ export const deriveKey = async (password, salt) => {
   const passwordAsKey = await makeDerivableKey(password)
   const saltBuffer = encodeData(salt)
   const passwordBuffer = encodeData(password)
+
   // Chain 2 key derivations : first, derive a key from a password
   const preKey = await slowHashing(passwordAsKey, saltBuffer, {
     iterations: 100000
