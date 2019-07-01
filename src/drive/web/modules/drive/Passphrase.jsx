@@ -4,7 +4,10 @@ import Modal, { ModalContent } from 'cozy-ui/react/Modal'
 import Alerter from 'cozy-ui/react/Alerter'
 import { translate } from 'cozy-ui/react/I18n'
 import { Input } from 'cozy-ui/react'
-import { deriveEncryptionKey } from 'drive/web/modules/navigation/duck'
+import {
+  decryptVaultEncryptionKey,
+  createVaultEncryptionKey
+} from 'drive/web/modules/navigation/duck'
 
 class Passphrase extends Component {
   constructor(props) {
@@ -21,9 +24,11 @@ class Passphrase extends Component {
 
   async onSubmitPassphrase() {
     const { t, onClose, dispatch } = this.props
+    // TODO create the vault encryption key once
+    await dispatch(createVaultEncryptionKey('cozy'))
     // TODO check passphrase.
     // TODO callback to props.onSubmitPassphrase()
-    await dispatch(deriveEncryptionKey(this.state.passphrase))
+    await dispatch(decryptVaultEncryptionKey(this.state.passphrase))
     Alerter.success(t('encryption.passphrase.success'))
     onClose()
   }
