@@ -21,7 +21,8 @@ import {
   UPDATE_FILE,
   DELETE_FILE,
   TOGGLE_THUMBNAIL_SIZE,
-  DERIVE_ENCRYPTION_KEY
+  DECRYPT_VAULT_ENCRYPTION_KEY,
+  CREATE_VAULT_ENCRYPTION_KEY
 } from './actions'
 
 import {
@@ -409,8 +410,9 @@ const lastFetch = (state = null, action) => {
 
 // reducer for encryption
 const encryption = (state = null, action) => {
-  switch(action.type) {
-    case DERIVE_ENCRYPTION_KEY:
+  switch (action.type) {
+    case DECRYPT_VAULT_ENCRYPTION_KEY:
+    case CREATE_VAULT_ENCRYPTION_KEY:
       return action.key
     default:
       return state
