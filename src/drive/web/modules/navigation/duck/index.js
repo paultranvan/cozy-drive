@@ -27,5 +27,6 @@ export {
   downloadFiles,
   exportFilesNative,
   openFileWith,
-  deriveEncryptionKey
+  decryptVaultEncryptionKey,
+  createVaultEncryptionKey
 } from './actions'

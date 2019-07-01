@@ -17,7 +17,11 @@ import { addToUploadQueue } from 'drive/web/modules/upload'
 import { showModal } from 'react-cozy-helpers'
 import Alerter from 'cozy-ui/react/Alerter'
 import QuotaAlert from 'drive/web/modules/upload/QuotaAlert'
-import { deriveKey } from 'drive/lib/encryption'
+import {
+  deriveKey,
+  generateAESVaultKey,
+  wrapAESKey
+} from 'drive/lib/encryption'
 
 import { ROOT_DIR_ID, TRASH_DIR_ID } from 'drive/constants/config.js'
 
@@ -49,7 +53,8 @@ export const OPEN_FILE_WITH = 'OPEN_FILE_WITH'
 export const ADD_FILE = 'ADD_FILE'
 export const UPDATE_FILE = 'UPDATE_FILE'
 export const DELETE_FILE = 'DELETE_FILE'
-export const DERIVE_ENCRYPTION_KEY = 'DERIVE_ENCRYPTION_KEY'
+export const DECRYPT_VAULT_ENCRYPTION_KEY = 'DECRYPT_ENCRYPTION_KEY'
+export const CREATE_VAULT_ENCRYPTION_KEY = 'CREATE_ENCRYPTION_KEY'
 
 const HTTP_CODE_CONFLICT = 409
 
@@ -505,13 +510,49 @@ export const openFileWith = (id, filename) => {
   }
 }
 
-export const deriveEncryptionKey = passphrase => {
+export const decryptVaultEncryptionKey = passphrase => {
   return async (dispatch, _, { client }) => {
+    // TODO derive secret key + get encrypted vault key + decrypt it
     const salt = client.getStackClient().uri
     const key = await deriveKey(passphrase, salt)
     return dispatch({
-      type: DERIVE_ENCRYPTION_KEY,
+      type: DECRYPT_VAULT_ENCRYPTION_KEY,
       key
+    })
+  }
+}
+
+export const createVaultEncryptionKey = passphrase => {
+  return async (dispatch, _, { client }) => {
+    // Derive secret key
+    const stackClient = client.getStackClient()
+    const salt = stackClient.uri
+    const secretKey = await deriveKey(passphrase, salt)
+    // Generate vault key and wrap it
+    const vaultKey = await generateAESVaultKey({ algorithm: 'AES-KW' })
+    // TODO: find a suitable kid
+    const jwe = await wrapAESKey(vaultKey, secretKey, '123')
+
+    // Save the wrapped key in settings
+    const settings = await client.query(
+      client.find('io.cozy.settings').getById('io.cozy.settings.instance')
+    )
+    let encryption
+    if (settings.data.encryption && settings.data.encryption.keys) {
+      settings.data.encryption.keys.push(jwe)
+      const keys = settings.data.encryption.keys
+      encryption = { ...settings.data.encryption, keys }
+    } else {
+      const keys = [jwe]
+      encryption = { ...settings.data.encryption, keys }
+    }
+    const newSettings = { ...settings.data, encryption }
+
+    await client.collection('io.cozy.settings').update(newSettings)
+
+    return dispatch({
+      type: CREATE_VAULT_ENCRYPTION_KEY,
+      key: vaultKey
     })
   }
 }
