@@ -2793,6 +2793,11 @@ base62@^1.1.0:
   resolved "https://registry.yarnpkg.com/base62/-/base62-1.2.8.tgz#1264cb0fb848d875792877479dbe8bae6bae3428"
   integrity sha512-V6YHUbjLxN1ymqNLb1DPHoU1CpfdL7d2YTIp5W3U4hhoG4hhxNmsFDs66M9EXxBiSEke5Bt5dwdfMwwZF70iLA==
 
+base64-arraybuffer@^0.2.0:
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/base64-arraybuffer/-/base64-arraybuffer-0.2.0.tgz#4b944fac0191aa5907afe2d8c999ccc57ce80f45"
+  integrity sha512-7emyCsu1/xiBXgQZrscw/8KPRT44I4Yq9Pe6EGs3aPRTsWuggML1/1DTuZUuIaJPIm1FTDUVXl4x/yW8s0kQDQ==
+
 base64-js@0.0.8:
   version "0.0.8"
   resolved "https://registry.yarnpkg.com/base64-js/-/base64-js-0.0.8.tgz#1101e9544f4a76b1bc3b26d452ca96d7a35e7978"
@@ -4481,13 +4486,13 @@ cozy-client-js@0.9.0:
     pouchdb-adapter-cordova-sqlite "https://github.com/SnceGroup/pouchdb-adapter-cordova-sqlite.git#f3ee23009b70209c611435d57491aa77fb88802a"
     pouchdb-find "0.10.4"
 
-cozy-client@6.38.2:
-  version "6.38.2"
-  resolved "https://registry.yarnpkg.com/cozy-client/-/cozy-client-6.38.2.tgz#cd9b25cee64a257393accb791a432557a7beb8ea"
-  integrity sha512-L2abVeV09CYfvs4xS8pdpqk0njGsPX0qoubkB35w5uSbCsh6uxG8bCeIQz1Loq+IHfAKStThUsciX7l2kLffGg==
+cozy-client@6.45.1:
+  version "6.45.1"
+  resolved "https://registry.yarnpkg.com/cozy-client/-/cozy-client-6.45.1.tgz#4f8f30d465737f28459edde83b17b25f83e17edd"
+  integrity sha512-A/1YRAfd50LFmlg5MGZMl3JK70pev1qzeLFXclXIVv4v4QgwJSPvVRwt7rSDPUotaPiQxbYy0+mM1+Rjnkp9yQ==
   dependencies:
     cozy-device-helper "1.6.3"
-    cozy-stack-client "^6.38.1"
+    cozy-stack-client "^6.44.0"
     lodash "4.17.11"
     microee "0.0.6"
     prop-types "15.6.2"
@@ -4648,10 +4653,10 @@ cozy-scripts@1.13.0:
     webpack-dev-server "3.1.10"
     webpack-merge "4.2.1"
 
-cozy-stack-client@^6.38.1:
-  version "6.38.1"
-  resolved "https://registry.yarnpkg.com/cozy-stack-client/-/cozy-stack-client-6.38.1.tgz#2680d798b1e0e74565e9e0592e364f39754fc169"
-  integrity sha512-prDUCB4Z5nA0Las+FCp0Ub0Nuz4mjg7vsDvobr6HN+IQvCGfTo8IZvK/TQRccSIDwq42MuoWYrvAC4gRii/00w==
+cozy-stack-client@^6.44.0:
+  version "6.44.0"
+  resolved "https://registry.yarnpkg.com/cozy-stack-client/-/cozy-stack-client-6.44.0.tgz#e462d978c7024aa523551aa33df2d5dbd3f85cf5"
+  integrity sha512-Vys+YedYsdGvJ1xOlv2e/+Cki/iLDTOe7JYsdkSV7rq/rYczhOmE+/lkcBEC6luTVF5Itv/8c7Dkx+OXC7skaw==
   dependencies:
     detect-node "2.0.4"
     mime-types "2.1.24"
