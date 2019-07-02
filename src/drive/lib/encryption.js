@@ -22,6 +22,16 @@ export const exportKeyJwk = async key => {
   return window.crypto.subtle.exportKey('jwk', key)
 }
 
+export const importKeyJwk = async (keyJWK, { algorithm, length } = {}) => {
+  return window.crypto.subtle.importKey(
+    'jwk',
+    keyJWK,
+    { name: algorithm || 'AES-GCM', length: length || 256 },
+    true,
+    ['encrypt', 'decrypt']
+  )
+}
+
 /**
  * Build a CryptoKey from an input data
  *
