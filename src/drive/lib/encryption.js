@@ -1,4 +1,7 @@
 import { encode } from 'base64-arraybuffer'
+import uuidv1 from 'uuid/v1'
+
+export const DERIVED_PASSPHRASE_KEY_ID = 'io.cozy.derivedkey.passphrase'
 
 // Encode a string into ArrayBuffer
 export const encodeData = data => {
@@ -111,7 +114,7 @@ export const importKey = async (
 }
 
 /**
- * Wrap the given key with the wrappingKey in a JWE-like format.
+ * Wrap the given key with the wrappingKey in a JWK-like format.
  * @param {CryptoKey} key  The key to wrap
  * @param {CryptoKey} wrappingKey      The wrapping key used to encrypt the key. It must have the 'wrapKey' property
  * @param {string} wrappingKeyId      The id of the wrapping key, used to retrieve it for unwrapping
@@ -131,24 +134,45 @@ export const wrapAESKey = async (
     'jwk',
     wrappingKey
   )
+  // Generate a random key id, based on the current timestamp
+  const kid = uuidv1()
+
+  // Encrypt the key with AES Key Wrapping
   const encryptedKey = encode(
     await window.crypto.subtle.wrapKey('raw', key, wrappingKey, {
       name: 'AES-KW'
     })
   )
-  // "alg"" is the algorithm used to encrypt the key
-  // "enc" is the algorithm of the encrypted key
-  // "kid" is the id of the wrapping key
-  const header = {
-    alg: wrappingKeyJwk.alg,
-    enc: keyJwk.alg,
-    kid: wrappingKeyId
+
+  // For more details on these fields, see https://tools.ietf.org/html/rfc7517
+  const saveKey = {
+    kid: kid, // The key id
+    alg: keyJwk.alg, // The key algorithm
+    kty: keyJwk.kty, // The key type
+    ext: keyJwk.ext, // If the key is extractable or not
+    key_ops: keyJwk.key_ops, // The operations allowed for this key
+    encrypted_key: encryptedKey, // The encrypted key
+    iv // The optional initialization vector
   }
-  return { header, encrypted_key: encryptedKey, iv: iv }
+  const saveWrap = {
+    kid: wrappingKeyId,
+    alg: wrappingKeyJwk.alg
+  }
+  return { wrappingKey: saveWrap, key: saveKey }
 }
 
-// TODO: all keys are not meant to wrap/unwrap or encrypt/decrypt
-export const generateAESFileKey = async ({ algorithm, keyLength } = {}) => {
+/**
+ * Generate an AES key. Default are for AES256-GCM keys, meant to encrypt/decrypt.
+ *
+ * @param {string} algorithm      The key algorithm
+ * @param {number} keyLength      The key length
+ * @param {Array}  keyUsages      An array of key usages
+ */
+export const generateAESKey = async ({
+  algorithm,
+  keyLength,
+  keyUsages
+} = {}) => {
   // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/generateKey
   return window.crypto.subtle.generateKey(
     {
@@ -156,20 +180,7 @@ export const generateAESFileKey = async ({ algorithm, keyLength } = {}) => {
       length: keyLength || 256
     },
     true, //whether the key is extractable (i.e. can be used in exportKey)
-    ['encrypt', 'decrypt', 'wrapKey', 'unwrapKey']
-  )
-}
-
-export const generateAESVaultKey = async () => {
-  // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/generateKey
-
-  return window.crypto.subtle.generateKey(
-    {
-      name: 'AES-KW',
-      length: 256
-    },
-    true, //whether the key is extractable (i.e. can be used in exportKey)
-    ['wrapKey', 'unwrapKey']
+    keyUsages || ['encrypt', 'decrypt']
   )
 }
 
