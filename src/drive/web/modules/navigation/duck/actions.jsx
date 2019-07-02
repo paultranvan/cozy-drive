@@ -21,8 +21,9 @@ import QuotaAlert from 'drive/web/modules/upload/QuotaAlert'
 import { getOpenedFolderId } from 'drive/web/modules/navigation/duck'
 import {
   deriveKey,
-  generateAESVaultKey,
-  wrapAESKey
+  generateAESKey,
+  wrapAESKey,
+  DERIVED_PASSPHRASE_KEY_ID
 } from 'drive/lib/encryption'
 import { ROOT_DIR_ID, TRASH_DIR_ID } from 'drive/constants/config.js'
 
@@ -549,25 +550,26 @@ export const createVaultEncryptionKey = passphrase => {
     // Derive secret key
     const stackClient = client.getStackClient()
     const salt = stackClient.uri
-    const secretKey = await deriveKey(passphrase, salt)
+    const derivedKey = await deriveKey(passphrase, salt)
     // Generate vault key and wrap it
-    const vaultKey = await generateAESVaultKey({ algorithm: 'AES-KW' })
-    // TODO: find a suitable kid
-    const jwe = await wrapAESKey(vaultKey, secretKey, '123')
-
+    const vaultKey = await generateAESKey({
+      algorithm: 'AES-KW',
+      keyUsages: ['wrapKey', 'unwrapKey']
+    })
+    const wrapped = await wrapAESKey(
+      vaultKey,
+      derivedKey,
+      DERIVED_PASSPHRASE_KEY_ID
+    )
     // Save the wrapped key in settings
     const settings = await client.query(
       client.find('io.cozy.settings').getById('io.cozy.settings.instance')
     )
-    let encryption
-    if (settings.data.encryption && settings.data.encryption.keys) {
-      settings.data.encryption.keys.push(jwe)
-      const keys = settings.data.encryption.keys
-      encryption = { ...settings.data.encryption, keys }
-    } else {
-      const keys = [jwe]
-      encryption = { ...settings.data.encryption, keys }
-    }
+    const keys =
+      settings.data.encryption && settings.data.encryption.keys
+        ? [...settings.data.encryption.keys, wrapped]
+        : [wrapped]
+    const encryption = { ...settings.data.encryption, keys }
     const newSettings = { ...settings.data, encryption }
 
     await client.collection('io.cozy.settings').update(newSettings)
