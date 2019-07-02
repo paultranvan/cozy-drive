@@ -25,6 +25,7 @@ import {
 } from 'drive/lib/encryption'
 
 import { ROOT_DIR_ID, TRASH_DIR_ID } from 'drive/constants/config.js'
+import { decodeArrayBuffer, decryptData } from '../../../../lib/encryption'
 
 export const OPEN_FOLDER = 'OPEN_FOLDER'
 export const OPEN_FOLDER_SUCCESS = 'OPEN_FOLDER_SUCCESS'
@@ -431,18 +432,55 @@ export const downloadFiles = files => {
   }
 }
 
-const downloadFile = (file, meta) => {
-  return async dispatch => {
-    const downloadURL = await cozy.client.files
-      .getDownloadLinkById(file.id)
-      .catch(error => {
-        Alerter.error(downloadFileError(error))
-        throw error
-      })
-    const filename = file.name
+const encryptedDataToURL = async file => {
+  const encryption = file.metadata
+  const iv = decodeArrayBuffer(encryption.iv)
+  const keyJWK = encryption.key
+  const key = await window.crypto.subtle.importKey(
+    'jwk',
+    keyJWK,
+    { name: 'AES-GCM' },
+    true,
+    ['encrypt', 'decrypt']
+  )
+  console.log('Key is ', key)
+  // Now fetch data
+  const response = await cozy.client.files.downloadById(file.id || file._id)
+  console.log('Response from client', response)
+  const encryptedBlob = await response.blob()
+  console.log('Response as encryptedBlob', encryptedBlob)
+  const encryptedArray = await new Response(encryptedBlob).arrayBuffer()
+  console.log('Response as encryptedArray', encryptedArray)
+  const data = await decryptData(key, encryptedArray, { iv })
+  console.log('clear:', data)
+  return URL.createObjectURL(new Blob([data], { type: file.type }))
+}
 
-    forceFileDownload(`${cozy.client._url}${downloadURL}?Dl=1`, filename)
-    return dispatch({ type: DOWNLOAD_FILE, file, meta })
+const downloadFile = (file, meta) => {
+  const encrypted = file.metadata.iv !== undefined
+  if (encrypted) {
+    return async dispatch => {
+      const downloadURL = await encryptedDataToURL(file)
+      const filename = file.name
+
+      forceFileDownload(downloadURL, filename)
+      return dispatch({ type: DOWNLOAD_FILE, file, meta })
+    }
+  } else {
+    return async dispatch => {
+      const downloadURL = await cozy.client.files
+        .getDownloadLinkById(file.id)
+        .catch(error => {
+          Alerter.error(downloadFileError(error))
+          throw error
+        })
+      // const downloadURL = await decipherData(file)
+      const filename = file.name
+
+      // forceFileDownload(downloadURL, filename)
+      forceFileDownload(`${cozy.client._url}${downloadURL}?Dl=1`, filename)
+      return dispatch({ type: DOWNLOAD_FILE, file, meta })
+    }
   }
 }
 
