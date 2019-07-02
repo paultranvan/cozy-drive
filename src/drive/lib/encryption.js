@@ -1,9 +1,12 @@
+import { encode } from 'base64-arraybuffer'
+
 // Encode a string into ArrayBuffer
 export const encodeData = data => {
   var encoder = new TextEncoder('utf-8')
   return encoder.encode(data)
 }
 
+// TODO: remove this in the future (use wrapKey)
 export const exportKeyJwk = async key => {
   return window.crypto.subtle.exportKey('jwk', key)
 }
@@ -25,7 +28,7 @@ const makeDerivableKey = async (data, { algorithm = 'PBKDF2' } = {}) => {
     'raw',
     keyData,
     { name: algorithm },
-    true,
+    true, //whether the key is extractable
     ['deriveKey']
   )
 }
@@ -46,11 +49,11 @@ const slowHashing = async (
     },
     baseKey,
     {
-      name: algorithm || 'AES-GCM',
+      name: algorithm || 'AES-KW',
       length: keyLength || 256
     },
-    true,
-    ['encrypt', 'decrypt', 'wrapKey', 'unwrapKey']
+    true, //whether the key is extractable
+    ['wrapKey', 'unwrapKey']
   )
 }
 
@@ -72,20 +75,6 @@ export const deriveKey = async (password, salt) => {
   })
   const key = await makeDerivableKey(preKey)
   return slowHashing(key, passwordBuffer, { iterations: 1 })
-}
-
-/**
- * Way of safe exporting a key by:
- *   1) encrypting it with the vaultKey using the AES-KW cypher mode
- *   2) exporting the result in a standardized format (JWK)
- *
- * @param {CryptoKey} key       The key to export
- * @param {CryptoKey} vaultKey  The key used to encrypt the exported key. It must have the wrapKey property.
- * @returns {ArrayBuffer}         The derived key
- */
-export const exportKey = async (key, vaultKey) => {
-  // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/wrapKey
-  return window.crypto.subtle.wrapKey('jwk', key, vaultKey, { name: 'AES-KW' })
 }
 
 /**
@@ -121,7 +110,45 @@ export const importKey = async (
   )
 }
 
-export const generateAESKey = async ({ algorithm, keyLength } = {}) => {
+/**
+ * Wrap the given key with the wrappingKey in a JWE-like format.
+ * @param {CryptoKey} key  The key to wrap
+ * @param {CryptoKey} wrappingKey      The wrapping key used to encrypt the key. It must have the 'wrapKey' property
+ * @param {string} wrappingKeyId      The id of the wrapping key, used to retrieve it for unwrapping
+ * @param {object} params           Additional parameters
+ * @param {string} iv        The initialization vector of the key
+
+ * https://tools.ietf.org/html/rfc7516
+ */
+export const wrapAESKey = async (
+  key,
+  wrappingKey,
+  wrappingKeyId,
+  { iv } = {}
+) => {
+  const keyJwk = await window.crypto.subtle.exportKey('jwk', key)
+  const wrappingKeyJwk = await window.crypto.subtle.exportKey(
+    'jwk',
+    wrappingKey
+  )
+  const encryptedKey = encode(
+    await window.crypto.subtle.wrapKey('raw', key, wrappingKey, {
+      name: 'AES-KW'
+    })
+  )
+  // "alg"" is the algorithm used to encrypt the key
+  // "enc" is the algorithm of the encrypted key
+  // "kid" is the id of the wrapping key
+  const header = {
+    alg: wrappingKeyJwk.alg,
+    enc: keyJwk.alg,
+    kid: wrappingKeyId
+  }
+  return { header, encrypted_key: encryptedKey, iv: iv }
+}
+
+// TODO: all keys are not meant to wrap/unwrap or encrypt/decrypt
+export const generateAESFileKey = async ({ algorithm, keyLength } = {}) => {
   // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/generateKey
   return window.crypto.subtle.generateKey(
     {
@@ -133,6 +160,29 @@ export const generateAESKey = async ({ algorithm, keyLength } = {}) => {
   )
 }
 
+export const generateAESVaultKey = async () => {
+  // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/generateKey
+
+  return window.crypto.subtle.generateKey(
+    {
+      name: 'AES-KW',
+      length: 256
+    },
+    true, //whether the key is extractable (i.e. can be used in exportKey)
+    ['wrapKey', 'unwrapKey']
+  )
+}
+
+/**
+  Encrypt data with the given key
+
+  * @param {CryptoKey} key      The encryption key
+  * @param {ArrayBuffer} data   The data to encrypt
+  * @param {object} params           Additional parameters
+  * @param {string} algorithm        The key algorithm. Default is "AES-GCM"
+  * @returns {object}
+
+*/
 export const encryptData = async (key, data, { algorithm } = {}) => {
   const name = algorithm || 'AES-GCM'
   // The NIST recommands 96 bits iv for AES-GCM: https://web.cs.ucdavis.edu/~rogaway/ocb/gcm.pdf
