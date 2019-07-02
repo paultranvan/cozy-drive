@@ -127,7 +127,10 @@ export const wrapAESKey = async (
   { iv } = {}
 ) => {
   const keyJwk = await window.crypto.subtle.exportKey('jwk', key)
-  const wrappingKeyJwk = await window.crypto.subtle.exportKey('jwk', key)
+  const wrappingKeyJwk = await window.crypto.subtle.exportKey(
+    'jwk',
+    wrappingKey
+  )
   const encryptedKey = encode(
     await window.crypto.subtle.wrapKey('raw', key, wrappingKey, {
       name: 'AES-KW'
