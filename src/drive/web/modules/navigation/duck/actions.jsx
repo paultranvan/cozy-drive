@@ -21,10 +21,13 @@ import {
   deriveKey,
   generateAESKey,
   wrapAESKey,
-  DERIVED_PASSPHRASE_KEY_ID
+  DERIVED_PASSPHRASE_KEY_ID,
+  decryptData,
+  importKeyJwk
 } from 'drive/lib/encryption'
 
 import { ROOT_DIR_ID, TRASH_DIR_ID } from 'drive/constants/config.js'
+import { decode as decodeArrayBuffer } from 'base64-arraybuffer'
 
 export const OPEN_FOLDER = 'OPEN_FOLDER'
 export const OPEN_FOLDER_SUCCESS = 'OPEN_FOLDER_SUCCESS'
@@ -431,18 +434,49 @@ export const downloadFiles = files => {
   }
 }
 
-const downloadFile = (file, meta) => {
-  return async dispatch => {
-    const downloadURL = await cozy.client.files
-      .getDownloadLinkById(file.id)
-      .catch(error => {
-        Alerter.error(downloadFileError(error))
-        throw error
-      })
-    const filename = file.name
+const encryptedDataToBlobURL = async file => {
+  // prepare decryption
+  const encryption = file.metadata.encryption
+  const iv = decodeArrayBuffer(encryption.iv)
+  const key = await importKeyJwk(encryption.key)
+  // Now fetch data
+  const data = await cozy.client.files
+    .downloadById(file.id || file._id)
+    .then(r => {
+      return r.blob()
+    })
+    .then(encryptedBlob => {
+      return new Response(encryptedBlob).arrayBuffer()
+    })
+    .then(encryptedBuffer => {
+      return decryptData(key, encryptedBuffer, { iv })
+    })
+  return URL.createObjectURL(new Blob([data], { type: file.type }))
+}
 
-    forceFileDownload(`${cozy.client._url}${downloadURL}?Dl=1`, filename)
-    return dispatch({ type: DOWNLOAD_FILE, file, meta })
+const downloadFile = (file, meta) => {
+  const encrypted = file.metadata.encryption !== undefined
+  if (encrypted) {
+    return async dispatch => {
+      const downloadURL = await encryptedDataToBlobURL(file)
+      const filename = file.name
+
+      forceFileDownload(downloadURL, filename)
+      return dispatch({ type: DOWNLOAD_FILE, file, meta })
+    }
+  } else {
+    return async dispatch => {
+      const downloadURL = await cozy.client.files
+        .getDownloadLinkById(file.id)
+        .catch(error => {
+          Alerter.error(downloadFileError(error))
+          throw error
+        })
+      const filename = file.name
+
+      forceFileDownload(`${cozy.client._url}${downloadURL}?Dl=1`, filename)
+      return dispatch({ type: DOWNLOAD_FILE, file, meta })
+    }
   }
 }
 

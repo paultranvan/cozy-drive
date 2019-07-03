@@ -5,11 +5,8 @@ import { hasSharedParent, isShared } from 'sharing/state'
 import { CozyFile } from 'models'
 import UploadQueue from './UploadQueue'
 import { VAULT_DIR_ID } from 'drive/constants/config'
-import {
-  encryptData,
-  generateAESFileKey,
-  exportKeyJwk
-} from 'drive/lib/encryption'
+import { encryptData, generateAESKey, exportKeyJwk } from 'drive/lib/encryption'
+import { encode as encodeArrayBuffer } from 'base64-arraybuffer'
 
 export { UploadQueue }
 
@@ -200,7 +197,7 @@ const uploadFile = async (client, file, dirID) => {
     fr.onload = async () => {
       const data = fr.result
       // Encrypt the file with a newly generated AES key
-      const aesKey = await generateAESFileKey()
+      const aesKey = await generateAESKey()
       const encrypted = await encryptData(aesKey, data)
       const jwk = await exportKeyJwk(aesKey)
 
@@ -208,15 +205,15 @@ const uploadFile = async (client, file, dirID) => {
       // TODO encrypt the key with exportKey
       const encryption = {
         key: jwk,
-        iv: btoa(encrypted.iv)
+        iv: encodeArrayBuffer(encrypted.iv)
       }
-      const name = file.name
+      const name = 'encrypted_' + file.name
       const resp = await client
         .collection('io.cozy.files')
         .createFile(encrypted.cipher, {
           name,
           dirId: dirID,
-          metadata: encryption
+          metadata: { encryption }
         })
       return resp.data
     }

@@ -1,4 +1,4 @@
-import { encode } from 'base64-arraybuffer'
+import { encode as encodeArrayBuffer } from 'base64-arraybuffer'
 import uuidv1 from 'uuid/v1'
 
 export const DERIVED_PASSPHRASE_KEY_ID = 'io.cozy.derivedkey.passphrase'
@@ -12,6 +12,16 @@ export const encodeData = data => {
 // TODO: remove this in the future (use wrapKey)
 export const exportKeyJwk = async key => {
   return window.crypto.subtle.exportKey('jwk', key)
+}
+
+export const importKeyJwk = async (keyJWK, { algorithm, length } = {}) => {
+  return window.crypto.subtle.importKey(
+    'jwk',
+    keyJWK,
+    { name: algorithm || 'AES-GCM', length: length || 256 },
+    true,
+    ['encrypt', 'decrypt']
+  )
 }
 
 /**
@@ -138,7 +148,7 @@ export const wrapAESKey = async (
   const kid = uuidv1()
 
   // Encrypt the key with AES Key Wrapping
-  const encryptedKey = encode(
+  const encryptedKey = encodeArrayBuffer(
     await window.crypto.subtle.wrapKey('raw', key, wrappingKey, {
       name: 'AES-KW'
     })
