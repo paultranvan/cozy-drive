@@ -197,13 +197,9 @@ const uploadFile = async (client, file, dirID) => {
     fr.onload = async () => {
       const data = fr.result
       // Encrypt the file with a newly generated AES key
-      console.log('go aes key')
       const aesKey = await generateAESKey()
-      console.log('go encrypt')
       const encrypted = await encryptData(aesKey, data)
-      console.log('go export')
       const jwk = await exportKeyJwk(aesKey)
-      console.log('exported : ', jwk)
 
       // Create the metadata object containing the encryption info
       // TODO encrypt the key with exportKey
@@ -211,7 +207,6 @@ const uploadFile = async (client, file, dirID) => {
         key: jwk,
         iv: encodeArrayBuffer(encrypted.iv)
       }
-      console.log('encryption : ', encryption)
       const name = 'encrypted_' + file.name
       const resp = await client
         .collection('io.cozy.files')
