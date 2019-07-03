@@ -642,7 +642,8 @@
       "desc" : "Enter your password to access your encrypted files",
       "submit": "Submit",
       "cancel": "Cancel",
-      "success": "Your vault is now unlocked!"
+      "success": "Your vault is now unlocked!",
+      "incorrect": "Incorrect passphrase! Please try again"
     }
   }
 }
