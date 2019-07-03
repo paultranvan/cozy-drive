@@ -477,10 +477,8 @@ const downloadFile = (file, meta) => {
           Alerter.error(downloadFileError(error))
           throw error
         })
-      // const downloadURL = await decipherData(file)
       const filename = file.name
 
-      // forceFileDownload(downloadURL, filename)
       forceFileDownload(`${cozy.client._url}${downloadURL}?Dl=1`, filename)
       return dispatch({ type: DOWNLOAD_FILE, file, meta })
     }
