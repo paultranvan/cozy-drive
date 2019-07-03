@@ -21,11 +21,11 @@ import {
   deriveKey,
   generateAESKey,
   wrapAESKey,
+  unwrapAESKey,
   DERIVED_PASSPHRASE_KEY_ID,
   decryptData,
   importKeyJwk
 } from 'drive/lib/encryption'
-
 import { ROOT_DIR_ID, TRASH_DIR_ID } from 'drive/constants/config.js'
 import { decode as decodeArrayBuffer } from 'base64-arraybuffer'
 
@@ -545,14 +545,22 @@ export const openFileWith = (id, filename) => {
   }
 }
 
-export const decryptVaultEncryptionKey = passphrase => {
+export const decryptVaultEncryptionKey = (vault, passphrase) => {
   return async (dispatch, _, { client }) => {
-    // TODO derive secret key + get encrypted vault key + decrypt it
     const salt = client.getStackClient().uri
-    const key = await deriveKey(passphrase, salt)
+    const derivedKey = await deriveKey(passphrase, salt)
+    const wrappedKey = decodeArrayBuffer(vault.key.encrypted_key)
+    const vaultKey = await unwrapAESKey(wrappedKey, derivedKey, {
+      algorithm: 'AES-GCM',
+      keyUsages: vault.key.key_ops
+    }).catch(error => {
+      Alerter.error('encryption.passphrase.incorrect')
+      throw error
+    })
+    // TODO: export/import the key to overcome the firefox AES-KW bug
     return dispatch({
       type: DECRYPT_VAULT_ENCRYPTION_KEY,
-      key
+      key: vaultKey
     })
   }
 }
@@ -563,6 +571,7 @@ export const createVaultEncryptionKey = passphrase => {
     const stackClient = client.getStackClient()
     const salt = stackClient.uri
     const derivedKey = await deriveKey(passphrase, salt)
+
     // Generate vault key and wrap it
     const vaultKey = await generateAESKey({
       algorithm: 'AES-KW',

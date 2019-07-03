@@ -91,47 +91,46 @@ export const deriveKey = async (password, salt) => {
 }
 
 /**
- *  Way of reading a previously exported/wrapped key. Since the export should
- *  have been done in a secure manner, the wrappedKey contains an encrypted
- *  version of the real key. Providing vaultKey allows to decypher it.
+ *  Unwrap the given key with the wrappingKey.
+
  *  Other parameters tell WebCrypto the kind of CryptoKey we expect as output:
  *    - a key dedicated to a given cypher-mode (default is AES-GCM)
  *    - a key that will accept to be wrapped and unwrapped
  *    - a key that will be used for encryption and decryption purpose
  *
- * @param {ArrayBuffer} wrappedKey  The key to import
- * @param {CryptoKey} vaultKey      The key used to encrypt the imported key. It must have the unwrapKey property.
+ * @param {ArrayBuffer} wrappedKey  The encrypted key
+ * @param {CryptoKey} wrappingKey   The key used to wrap the wrapped key
  * @param {object} params           Additional parameters
  * @param {string} algorithm        The key algorithm. Default is "AES-GCM"
  * @param {number} length           The key length. Default is 256
- * @returns {CryptoKey}             The derived key
+ * @param {Array}  keyUsages        An array of key usages
+ * @returns {CryptoKey}             The unwrapped key
  */
-export const importKey = async (
+export const unwrapAESKey = async (
   wrappedKey,
-  vaultKey,
-  { algorithm, length } = {}
+  wrappingKey,
+  { algorithm, length, keyUsages } = {}
 ) => {
   // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/unwrapKey
   return window.crypto.subtle.unwrapKey(
-    'jwk',
+    'raw',
     wrappedKey,
-    vaultKey,
+    wrappingKey,
     'AES-KW',
     { name: algorithm || 'AES-GCM', length: length || 256 },
     true,
-    ['encrypt', 'decrypt', 'wrapKey', 'unwrapKey']
+    keyUsages || ['encrypt', 'decrypt']
   )
 }
 
 /**
  * Wrap the given key with the wrappingKey in a JWK-like format.
- * @param {CryptoKey} key  The key to wrap
- * @param {CryptoKey} wrappingKey      The wrapping key used to encrypt the key. It must have the 'wrapKey' property
- * @param {string} wrappingKeyId      The id of the wrapping key, used to retrieve it for unwrapping
+ * @param {CryptoKey} key           The key to wrap
+ * @param {CryptoKey} wrappingKey   The wrapping key used to encrypt the key. It must have the 'wrapKey' property
+ * @param {string} wrappingKeyId    The id of the wrapping key, used to retrieve it for unwrapping
  * @param {object} params           Additional parameters
- * @param {string} iv        The initialization vector of the key
-
- * https://tools.ietf.org/html/rfc7516
+ * @param {string} iv               The initialization vector of the key
+ * @returns {Object}             The wrapped key
  */
 export const wrapAESKey = async (
   key,
@@ -148,11 +147,15 @@ export const wrapAESKey = async (
   const kid = uuidv1()
 
   // Encrypt the key with AES Key Wrapping
-  const encryptedKey = encodeArrayBuffer(
-    await window.crypto.subtle.wrapKey('raw', key, wrappingKey, {
+  const encryptedKey = await window.crypto.subtle.wrapKey(
+    'raw',
+    key,
+    wrappingKey,
+    {
       name: 'AES-KW'
-    })
+    }
   )
+  const encodedEncryptedKey = encodeArrayBuffer(encryptedKey)
 
   // For more details on these fields, see https://tools.ietf.org/html/rfc7517
   const saveKey = {
@@ -161,7 +164,7 @@ export const wrapAESKey = async (
     kty: keyJwk.kty, // The key type
     ext: keyJwk.ext, // If the key is extractable or not
     key_ops: keyJwk.key_ops, // The operations allowed for this key
-    encrypted_key: encryptedKey, // The encrypted key
+    encrypted_key: encodedEncryptedKey, // The encrypted key
     iv // The optional initialization vector
   }
   const saveWrap = {
