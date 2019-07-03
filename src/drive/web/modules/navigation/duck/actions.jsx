@@ -26,11 +26,8 @@ import {
   DERIVED_PASSPHRASE_KEY_ID
 } from 'drive/lib/encryption'
 import { ROOT_DIR_ID, TRASH_DIR_ID } from 'drive/constants/config.js'
-import {
-  decodeArrayBuffer,
-  decryptData,
-  importKeyJwk
-} from '../../../../lib/encryption'
+import { decryptData, importKeyJwk } from '../../../../lib/encryption'
+import { decode as decodeArrayBuffer } from 'base64-arraybuffer'
 
 export const OPEN_FOLDER = 'OPEN_FOLDER'
 export const OPEN_FOLDER_SUCCESS = 'OPEN_FOLDER_SUCCESS'

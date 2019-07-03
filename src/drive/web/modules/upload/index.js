@@ -9,12 +9,8 @@ import { doUpload } from 'cozy-scanner/dist/ScannerUpload'
 
 import UploadQueue from './UploadQueue'
 import { VAULT_DIR_ID } from 'drive/constants/config'
-import {
-  encryptData,
-  generateAESKey,
-  exportKeyJwk,
-  encodeArrayBuffer
-} from 'drive/lib/encryption'
+import { encryptData, generateAESKey, exportKeyJwk } from 'drive/lib/encryption'
+import { encode as encodeArrayBuffer } from 'base64-arraybuffer'
 
 export { UploadQueue }
 
