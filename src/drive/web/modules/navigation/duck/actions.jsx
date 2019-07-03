@@ -443,7 +443,7 @@ export const downloadFiles = files => {
 
 const encryptedDataToBlobURL = async file => {
   // prepare decryption
-  const encryption = file.metadata
+  const encryption = file.metadata.encryption
   const iv = decodeArrayBuffer(encryption.iv)
   const key = await importKeyJwk(encryption.key)
   // Now fetch data
@@ -462,7 +462,7 @@ const encryptedDataToBlobURL = async file => {
 }
 
 const downloadFile = (file, meta) => {
-  const encrypted = file.metadata.iv !== undefined
+  const encrypted = file.metadata.encryption !== undefined
   if (encrypted) {
     return async dispatch => {
       const downloadURL = await encryptedDataToBlobURL(file)

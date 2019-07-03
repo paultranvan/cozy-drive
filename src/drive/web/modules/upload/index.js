@@ -9,7 +9,12 @@ import { doUpload } from 'cozy-scanner/dist/ScannerUpload'
 
 import UploadQueue from './UploadQueue'
 import { VAULT_DIR_ID } from 'drive/constants/config'
-import { encryptData, generateAESKey, exportKeyJwk, encodeArrayBuffer } from 'drive/lib/encryption'
+import {
+  encryptData,
+  generateAESKey,
+  exportKeyJwk,
+  encodeArrayBuffer
+} from 'drive/lib/encryption'
 
 export { UploadQueue }
 
@@ -248,7 +253,7 @@ const uploadFile = async (client, file, dirID) => {
         .createFile(encrypted.cipher, {
           name,
           dirId: dirID,
-          metadata: encryption
+          metadata: { encryption }
         })
       return resp.data
     }
