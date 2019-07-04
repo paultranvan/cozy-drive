@@ -5,7 +5,8 @@ import { hasSharedParent, isShared } from 'sharing/state'
 import { CozyFile } from 'models'
 import UploadQueue from './UploadQueue'
 import { VAULT_DIR_ID } from 'drive/constants/config'
-import { encryptData, generateAESKey, exportKeyJwk } from 'drive/lib/encryption'
+import { generateAESKey, exportKeyJwk } from 'drive/lib/encryption/keys'
+import { encryptData } from 'drive/lib/encryption/data'
 import { encode as encodeArrayBuffer } from 'base64-arraybuffer'
 
 export { UploadQueue }

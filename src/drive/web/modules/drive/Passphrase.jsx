@@ -6,7 +6,7 @@ import Alerter from 'cozy-ui/react/Alerter'
 import { translate } from 'cozy-ui/react/I18n'
 import { withClient } from 'cozy-client'
 import { Input } from 'cozy-ui/react'
-import { DERIVED_PASSPHRASE_KEY_ID } from 'drive/lib/encryption'
+import { DERIVED_PASSPHRASE_KEY_ID } from 'drive/lib/encryption/keys'
 import {
   decryptVaultEncryptionKey,
   createVaultEncryptionKey
