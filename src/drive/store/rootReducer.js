@@ -18,6 +18,7 @@ import {
   UNLINK
 } from 'drive/mobile/modules/authorization/duck'
 import { default as replication } from 'drive/mobile/modules/replication/duck'
+import { default as encryption } from 'drive/web/modules/encryption/duck'
 
 // Per Dan Abramov: https://stackoverflow.com/questions/35622588/how-to-reset-the-state-of-a-redux-store/35641992#35641992
 const createRootReducer = client => {
@@ -28,7 +29,8 @@ const createRootReducer = client => {
     upload,
     selection,
     rename,
-    availableOffline
+    availableOffline,
+    encryption
   }
 
   const mobileReducer = combineReducers({
