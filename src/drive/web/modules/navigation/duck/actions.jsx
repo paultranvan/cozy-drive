@@ -434,7 +434,7 @@ export const downloadFiles = files => {
 }
 
 const downloadFile = (file, meta) => {
-  const encrypted = file.metadata.encryption !== undefined
+  const encrypted = file.metadata && file.metadata.encryption
   if (encrypted) {
     return async dispatch => {
       const downloadURL = await createDecryptedFileURL(file)
