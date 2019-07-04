@@ -4,7 +4,7 @@ import { connect } from 'react-redux'
 import { Button, Alerter } from 'cozy-ui/transpiled/react'
 import { logException } from 'drive/lib/reporter'
 import { isMobileApp } from 'cozy-device-helper'
-
+import { createDecryptedFileURL } from 'drive/lib/encryption/data'
 import { openLocalFileCopy } from 'drive/mobile/modules/offline/duck'
 
 class AsyncActionButton extends React.Component {
@@ -56,9 +56,26 @@ const OpenWithCordovaButton = connect(
   />
 ))
 
-const DownloadButton = ({ t, file }, { client }) => (
+// WARNING: this is already duplicated in cozy-client and navigation/duck/action
+// Eventually, we would call a cozy-client method, so we duplicate the code for now to avoid ugly import
+const forceFileDownload = (href, filename) => {
+  const element = document.createElement('a')
+  element.setAttribute('href', href)
+  element.setAttribute('download', filename)
+  element.style.display = 'none'
+  document.body.appendChild(element)
+  element.click()
+  document.body.removeChild(element)
+}
+
+const downloadFile = async file => {
+  const downloadURL = await createDecryptedFileURL(file)
+  forceFileDownload(downloadURL, file.name)
+}
+
+const DownloadButton = ({ t, file }) => (
   <Button
-    onClick={() => client.collection('io.cozy.files').download(file)}
+    onClick={() => downloadFile(file)}
     label={t('Viewer.noviewer.download')}
   />
 )
