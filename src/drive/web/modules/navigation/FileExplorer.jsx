@@ -8,7 +8,7 @@ import { queryConnect, models, withClient, Q } from 'cozy-client'
 import { translate } from 'cozy-ui/transpiled/react/I18n'
 import SharingProvider from 'cozy-sharing'
 import { showModal } from 'react-cozy-helpers'
-import Passphrase from 'drive/web/modules/drive/Passphrase'
+import Passphrase from 'drive/web/modules/encryption/Passphrase'
 import { VAULT_DIR_ID } from 'drive/constants/config'
 import RealtimeFiles from './RealtimeFiles'
 import {

@@ -9,8 +9,8 @@ import { doUpload } from 'cozy-scanner/dist/ScannerUpload'
 
 import UploadQueue from './UploadQueue'
 import { VAULT_DIR_ID } from 'drive/constants/config'
-import { generateAESKey, exportKeyJwk } from 'drive/lib/encryption/keys'
-import { encryptData } from 'drive/lib/encryption/data'
+import { generateAESKey, exportKey } from 'drive/web//modules/encryption/keys'
+import { encryptData } from 'drive/web/modules/encryption/data'
 import { encode as encodeArrayBuffer } from 'base64-arraybuffer'
 
 export { UploadQueue }
@@ -231,7 +231,7 @@ const uploadFile = async (client, file, dirID) => {
       // Encrypt the file with a newly generated AES key
       const aesKey = await generateAESKey()
       const encrypted = await encryptData(aesKey, data)
-      const jwk = await exportKeyJwk(aesKey)
+      const jwk = await exportKey('jwk', aesKey)
 
       // Create the metadata object containing the encryption info
       // TODO encrypt the key with exportKey

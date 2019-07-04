@@ -9,18 +9,21 @@ export const encodeData = data => {
   return encoder.encode(data)
 }
 
-// TODO: remove this in the future (use wrapKey)
-export const exportKeyJwk = async key => {
-  return window.crypto.subtle.exportKey('jwk', key)
+export const exportKey = async (format, key) => {
+  return window.crypto.subtle.exportKey(format, key)
 }
 
-export const importKeyJwk = async (keyJWK, { algorithm, length } = {}) => {
+export const importKey = async (
+  format,
+  keyJWK,
+  { algorithm, length, keyUsages } = {}
+) => {
   return window.crypto.subtle.importKey(
-    'jwk',
+    format,
     keyJWK,
     { name: algorithm || 'AES-GCM', length: length || 256 },
     true,
-    ['encrypt', 'decrypt']
+    keyUsages || ['encrypt', 'decrypt']
   )
 }
 
