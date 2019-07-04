@@ -68,14 +68,19 @@ const forceFileDownload = (href, filename) => {
   document.body.removeChild(element)
 }
 
-const downloadFile = async file => {
-  const downloadURL = await createDecryptedFileURL(file)
-  forceFileDownload(downloadURL, file.name)
+const downloadFile = async (client, file) => {
+  const encrypted = file.metadata && file.metadata.encryption
+  if (encrypted) {
+    const downloadURL = await createDecryptedFileURL(file)
+    return forceFileDownload(downloadURL, file.name)
+  } else {
+    return client.collection('io.cozy.files').download(file)
+  }
 }
 
-const DownloadButton = ({ t, file }) => (
+const DownloadButton = ({ t, file }, { client }) => (
   <Button
-    onClick={() => downloadFile(file)}
+    onClick={() => downloadFile(client, file)}
     label={t('Viewer.noviewer.download')}
   />
 )
