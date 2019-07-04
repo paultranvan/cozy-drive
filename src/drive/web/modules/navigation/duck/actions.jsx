@@ -17,16 +17,8 @@ import { addToUploadQueue } from 'drive/web/modules/upload'
 import { showModal } from 'react-cozy-helpers'
 import Alerter from 'cozy-ui/react/Alerter'
 import QuotaAlert from 'drive/web/modules/upload/QuotaAlert'
-import {
-  deriveKey,
-  generateAESKey,
-  wrapAESKey,
-  unwrapAESKey,
-  DERIVED_PASSPHRASE_KEY_ID
-} from 'drive/lib/encryption/keys'
-import { createDecryptedFileURL } from 'drive/lib/encryption/data'
+import { createDecryptedFileURL } from 'drive/web/modules/encryption/data'
 import { ROOT_DIR_ID, TRASH_DIR_ID } from 'drive/constants/config.js'
-import { decode as decodeArrayBuffer } from 'base64-arraybuffer'
 
 export const OPEN_FOLDER = 'OPEN_FOLDER'
 export const OPEN_FOLDER_SUCCESS = 'OPEN_FOLDER_SUCCESS'
@@ -56,8 +48,6 @@ export const OPEN_FILE_WITH = 'OPEN_FILE_WITH'
 export const ADD_FILE = 'ADD_FILE'
 export const UPDATE_FILE = 'UPDATE_FILE'
 export const DELETE_FILE = 'DELETE_FILE'
-export const DECRYPT_VAULT_ENCRYPTION_KEY = 'DECRYPT_ENCRYPTION_KEY'
-export const CREATE_VAULT_ENCRYPTION_KEY = 'CREATE_ENCRYPTION_KEY'
 
 const HTTP_CODE_CONFLICT = 409
 
@@ -520,62 +510,5 @@ export const openFileWith = (id, filename) => {
     } else {
       Alerter.error('mobile.error.open_with.noapp')
     }
-  }
-}
-
-export const decryptVaultEncryptionKey = (vault, passphrase) => {
-  return async (dispatch, _, { client }) => {
-    const salt = client.getStackClient().uri
-    const derivedKey = await deriveKey(passphrase, salt)
-    const wrappedKey = decodeArrayBuffer(vault.key.encrypted_key)
-    const vaultKey = await unwrapAESKey(wrappedKey, derivedKey, {
-      algorithm: 'AES-GCM',
-      keyUsages: vault.key.key_ops
-    }).catch(error => {
-      Alerter.error('encryption.passphrase.incorrect')
-      throw error
-    })
-    // TODO: export/import the key to overcome the firefox AES-KW bug
-    return dispatch({
-      type: DECRYPT_VAULT_ENCRYPTION_KEY,
-      key: vaultKey
-    })
-  }
-}
-
-export const createVaultEncryptionKey = passphrase => {
-  return async (dispatch, _, { client }) => {
-    // Derive secret key
-    const stackClient = client.getStackClient()
-    const salt = stackClient.uri
-    const derivedKey = await deriveKey(passphrase, salt)
-
-    // Generate vault key and wrap it
-    const vaultKey = await generateAESKey({
-      algorithm: 'AES-KW',
-      keyUsages: ['wrapKey', 'unwrapKey']
-    })
-    const wrapped = await wrapAESKey(
-      vaultKey,
-      derivedKey,
-      DERIVED_PASSPHRASE_KEY_ID
-    )
-    // Save the wrapped key in settings
-    const settings = await client.query(
-      client.find('io.cozy.settings').getById('io.cozy.settings.instance')
-    )
-    const keys =
-      settings.data.encryption && settings.data.encryption.keys
-        ? [...settings.data.encryption.keys, wrapped]
-        : [wrapped]
-    const encryption = { ...settings.data.encryption, keys }
-    const newSettings = { ...settings.data, encryption }
-
-    await client.collection('io.cozy.settings').update(newSettings)
-
-    return dispatch({
-      type: CREATE_VAULT_ENCRYPTION_KEY,
-      key: vaultKey
-    })
   }
 }

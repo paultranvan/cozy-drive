@@ -4,7 +4,7 @@ import { connect } from 'react-redux'
 import { Button, Alerter } from 'cozy-ui/transpiled/react'
 import { logException } from 'drive/lib/reporter'
 import { isMobileApp } from 'cozy-device-helper'
-import { createDecryptedFileURL } from 'drive/lib/encryption/data'
+import { createDecryptedFileURL } from 'drive/web/modules/encryption/data'
 import { openLocalFileCopy } from 'drive/mobile/modules/offline/duck'
 
 class AsyncActionButton extends React.Component {
