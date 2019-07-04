@@ -26,16 +26,16 @@ class Passphrase extends Component {
     const settings = await client.query(
       client.find('io.cozy.settings').getById('io.cozy.settings.instance')
     )
-    let encVault
+    let vault
     if (settings.data.encryption && settings.data.encryption.keys) {
       for (const entry of settings.data.encryption.keys) {
         if (entry.wrappingKey.kid === DERIVED_PASSPHRASE_KEY_ID) {
-          encVault = entry
+          vault = entry
           break
         }
       }
     }
-    return encVault
+    return vault
   }
 
   async componentWillMount() {
