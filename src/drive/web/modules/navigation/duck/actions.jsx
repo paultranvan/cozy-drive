@@ -22,10 +22,9 @@ import {
   generateAESKey,
   wrapAESKey,
   unwrapAESKey,
-  DERIVED_PASSPHRASE_KEY_ID,
-  decryptData,
-  importKeyJwk
-} from 'drive/lib/encryption'
+  DERIVED_PASSPHRASE_KEY_ID
+} from 'drive/lib/encryption/keys'
+import { createDecryptedFileURL } from 'drive/lib/encryption/data'
 import { ROOT_DIR_ID, TRASH_DIR_ID } from 'drive/constants/config.js'
 import { decode as decodeArrayBuffer } from 'base64-arraybuffer'
 
@@ -434,33 +433,12 @@ export const downloadFiles = files => {
   }
 }
 
-const encryptedDataToBlobURL = async file => {
-  // prepare decryption
-  const encryption = file.metadata.encryption
-  const iv = decodeArrayBuffer(encryption.iv)
-  const key = await importKeyJwk(encryption.key)
-  // Now fetch data
-  const data = await cozy.client.files
-    .downloadById(file.id || file._id)
-    .then(r => {
-      return r.blob()
-    })
-    .then(encryptedBlob => {
-      return new Response(encryptedBlob).arrayBuffer()
-    })
-    .then(encryptedBuffer => {
-      return decryptData(key, encryptedBuffer, { iv })
-    })
-  return URL.createObjectURL(new Blob([data], { type: file.type }))
-}
-
 const downloadFile = (file, meta) => {
   const encrypted = file.metadata.encryption !== undefined
   if (encrypted) {
     return async dispatch => {
-      const downloadURL = await encryptedDataToBlobURL(file)
+      const downloadURL = await createDecryptedFileURL(file)
       const filename = file.name
-
       forceFileDownload(downloadURL, filename)
       return dispatch({ type: DOWNLOAD_FILE, file, meta })
     }
