@@ -1,7 +1,6 @@
 /* global cozy */
-
 import { decode as decodeArrayBuffer } from 'base64-arraybuffer'
-import { importKey } from './keys'
+import { unwrapAESKey } from './keys'
 
 /**
   Encrypt data with the given key
@@ -37,12 +36,13 @@ export const decryptData = async (key, data, { algorithm, iv } = {}) => {
   )
 }
 
-export const createDecryptedFileURL = async file => {
-  // prepare decryption
+export const createDecryptedFileURL = async (vaultKey, file) => {
+  // Prepare key + binary decryption
   const encryption = file.metadata.encryption
-  const iv = decodeArrayBuffer(encryption.iv)
-  // TODO the key should be encrypted
-  const key = await importKey('jwk', encryption.key)
+  const wrappedKey = decodeArrayBuffer(encryption.key.encrypted_key)
+  const key = await unwrapAESKey(wrappedKey, vaultKey)
+  const iv = decodeArrayBuffer(encryption.key.iv)
+
   // Now fetch data
   const resp = await cozy.client.files.downloadById(file.id || file._id)
   const encBuff = await resp.arrayBuffer()
