@@ -426,8 +426,9 @@ export const downloadFiles = files => {
 const downloadFile = (file, meta) => {
   const encrypted = file.metadata && file.metadata.encryption
   if (encrypted) {
-    return async dispatch => {
-      const downloadURL = await createDecryptedFileURL(file)
+    return async (dispatch, getState) => {
+      const vaultKey = getState().encryption.vault.key
+      const downloadURL = await createDecryptedFileURL(vaultKey, file)
       const filename = file.name
       forceFileDownload(downloadURL, filename)
       return dispatch({ type: DOWNLOAD_FILE, file, meta })

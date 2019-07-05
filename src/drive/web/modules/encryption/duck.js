@@ -14,11 +14,12 @@ export const DECRYPT_VAULT_ENCRYPTION_KEY = 'DECRYPT_ENCRYPTION_KEY'
 export const CREATE_VAULT_ENCRYPTION_KEY = 'CREATE_ENCRYPTION_KEY'
 
 // reducer
-const encryption = (state = null, action) => {
+const initialState = { vault: { key: null, id: '' } }
+const encryption = (state = initialState, action) => {
   switch (action.type) {
     case DECRYPT_VAULT_ENCRYPTION_KEY:
     case CREATE_VAULT_ENCRYPTION_KEY:
-      return action.key
+      return { ...state, vault: action.vault }
     default:
       return state
   }
@@ -30,6 +31,7 @@ export const decryptVaultEncryptionKey = (vault, passphrase) => {
     const salt = client.getStackClient().uri
     const derivedKey = await deriveKey(passphrase, salt)
     const wrappedKey = decodeArrayBuffer(vault.key.encrypted_key)
+    const wrappedKeyId = vault.key.kid
     // WARNING the vault key is AES-KW. However, due to a bug in Mozilla,
     // we are forced to ask for a AES-GCM key, and then "convert" it in AES-KW
     const vaultKey = await unwrapAESKey(wrappedKey, derivedKey, {
@@ -44,9 +46,10 @@ export const decryptVaultEncryptionKey = (vault, passphrase) => {
       algorithm: 'AES-KW',
       keyUsages: ['wrapKey', 'unwrapKey']
     })
+
     return dispatch({
       type: DECRYPT_VAULT_ENCRYPTION_KEY,
-      key: importVaultKey
+      vault: { key: importVaultKey, id: wrappedKeyId }
     })
   }
 }
@@ -63,7 +66,7 @@ export const createVaultEncryptionKey = passphrase => {
       algorithm: 'AES-KW',
       keyUsages: ['wrapKey', 'unwrapKey']
     })
-    const wrapped = await wrapAESKey(
+    const wrap = await wrapAESKey(
       vaultKey,
       derivedKey,
       DERIVED_PASSPHRASE_KEY_ID
@@ -74,8 +77,8 @@ export const createVaultEncryptionKey = passphrase => {
     )
     const keys =
       settings.data.encryption && settings.data.encryption.keys
-        ? [...settings.data.encryption.keys, wrapped]
-        : [wrapped]
+        ? [...settings.data.encryption.keys, wrap]
+        : [wrap]
     const encryption = { ...settings.data.encryption, keys }
     const newSettings = { ...settings.data, encryption }
 
@@ -83,7 +86,7 @@ export const createVaultEncryptionKey = passphrase => {
 
     return dispatch({
       type: CREATE_VAULT_ENCRYPTION_KEY,
-      key: vaultKey
+      vault: { key: vaultKey, id: wrap.key.kid }
     })
   }
 }

@@ -68,30 +68,36 @@ const forceFileDownload = (href, filename) => {
   document.body.removeChild(element)
 }
 
-const downloadFile = async (client, file) => {
+const downloadFile = async (client, file, vault) => {
   const encrypted = file.metadata && file.metadata.encryption
   if (encrypted) {
-    const downloadURL = await createDecryptedFileURL(file)
+    const downloadURL = await createDecryptedFileURL(vault, file)
     return forceFileDownload(downloadURL, file.name)
   } else {
     return client.collection('io.cozy.files').download(file)
   }
 }
 
-const DownloadButton = ({ t, file }, { client }) => (
+const DownloadButton = ({ t, file, vaultKey }, { client }) => (
   <Button
-    onClick={() => downloadFile(client, file)}
+    onClick={() => downloadFile(client, file, vaultKey)}
     label={t('Viewer.noviewer.download')}
   />
 )
+
+const mapStateToProps = state => {
+  return {
+    vaultKey: state.encryption.vault.key
+  }
+}
 
 DownloadButton.contextTypes = {
   client: PropTypes.object.isRequired
 }
 
-const NoViewerButton = ({ file, t }) => {
+const NoViewerButton = ({ file, t, vaultKey }) => {
   if (isMobileApp()) return <OpenWithCordovaButton t={t} file={file} />
-  else return <DownloadButton t={t} file={file} />
+  else return <DownloadButton t={t} file={file} vaultKey={vaultKey} />
 }
 
-export default NoViewerButton
+export default connect(mapStateToProps)(NoViewerButton)
