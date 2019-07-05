@@ -20,7 +20,6 @@ import Alerter from 'cozy-ui/transpiled/react/Alerter'
 import QuotaAlert from 'drive/web/modules/upload/QuotaAlert'
 import { getOpenedFolderId } from 'drive/web/modules/navigation/duck'
 import { createDecryptedFileURL } from 'drive/web/modules/encryption/data'
-import { ROOT_DIR_ID, TRASH_DIR_ID } from 'drive/constants/config.js'
 
 export const OPEN_FOLDER = 'OPEN_FOLDER'
 export const OPEN_FOLDER_SUCCESS = 'OPEN_FOLDER_SUCCESS'
@@ -432,8 +431,9 @@ export const downloadFiles = files => {
 const downloadFile = (file, meta) => {
   const encrypted = file.metadata && file.metadata.encryption
   if (encrypted) {
-    return async dispatch => {
-      const downloadURL = await createDecryptedFileURL(file)
+    return async (dispatch, getState) => {
+      const vaultKey = getState().encryption.vault.key
+      const downloadURL = await createDecryptedFileURL(vaultKey, file)
       const filename = file.name
       forceFileDownload(downloadURL, filename)
       return dispatch({ type: DOWNLOAD_FILE, file, meta })

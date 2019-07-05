@@ -9,7 +9,7 @@ import { doUpload } from 'cozy-scanner/dist/ScannerUpload'
 
 import UploadQueue from './UploadQueue'
 import { VAULT_DIR_ID } from 'drive/constants/config'
-import { generateAESKey, exportKey } from 'drive/web//modules/encryption/keys'
+import { generateAESKey, exportKey, wrapAESKey } from 'drive/web//modules/encryption/keys'
 import { encryptData } from 'drive/web/modules/encryption/data'
 import { encode as encodeArrayBuffer } from 'base64-arraybuffer'
 
@@ -114,11 +114,12 @@ export const processNextFile = (
   const { file, entry, isDirectory } = item
   try {
     dispatch({ type: UPLOAD_FILE, file })
+    const vault = getState().encryption.vault
     if (entry && isDirectory) {
-      const newDir = await uploadDirectory(client, entry, dirID)
+      const newDir = await uploadDirectory(client, entry, dirID, vault)
       fileUploadedCallback(newDir)
     } else {
-      const uploadedFile = await uploadFile(client, file, dirID)
+      const uploadedFile = await uploadFile(client, file, dirID, vault)
       fileUploadedCallback(uploadedFile)
     }
     dispatch({ type: RECEIVE_UPLOAD_SUCCESS, file })
@@ -194,7 +195,8 @@ const createFolder = async (client, name, dirID) => {
 }
 
 // TODO handle hierarchy when dirID is a sub-dir of the vault
-const uploadFile = async (client, file, dirID) => {
+// TODO handle multiple uploads (see uploadDirectory)
+const uploadFile = async (client, file, dirID, vault) => {
   /** We have a bug with Chrome returning SPDY_ERROR_PROTOCOL.
    * This is certainly caused by the couple HTTP2 / HAProxy / CozyStack
    * when something cut the HTTP connexion before the Stack
@@ -224,28 +226,25 @@ const uploadFile = async (client, file, dirID) => {
     }
   }
   if (dirID === VAULT_DIR_ID) {
+    const vaultKey = vault.key
+    const vaultId = vault.id
     // FileReader is needed to read the file before encryption
     const fr = new FileReader()
     fr.onload = async () => {
       const data = fr.result
       // Encrypt the file with a newly generated AES key
       const aesKey = await generateAESKey()
-      const encrypted = await encryptData(aesKey, data)
-      const jwk = await exportKey('jwk', aesKey)
-
-      // Create the metadata object containing the encryption info
-      // TODO encrypt the key with exportKey
-      const encryption = {
-        key: jwk,
-        iv: encodeArrayBuffer(encrypted.iv)
-      }
+      const encryptedFile = await encryptData(aesKey, data)
+      const iv = encodeArrayBuffer(encryptedFile.iv)
+      // Wrap the AES key with the vault key and save it in database
+      const wrap = await wrapAESKey(aesKey, vaultKey, vaultId, { iv })
       const name = 'encrypted_' + file.name
       const resp = await client
         .collection('io.cozy.files')
-        .createFile(encrypted.cipher, {
+        .createFile(encryptedFile.cipher, {
           name,
           dirId: dirID,
-          metadata: { encryption }
+          metadata: { encryption: wrap }
         })
       return resp.data
     }
