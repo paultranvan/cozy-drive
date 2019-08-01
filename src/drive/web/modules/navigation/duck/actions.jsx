@@ -18,7 +18,12 @@ import { showModal } from 'react-cozy-helpers'
 import Alerter from 'cozy-ui/react/Alerter'
 import QuotaAlert from 'drive/web/modules/upload/QuotaAlert'
 import { createDecryptedFileURL } from 'drive/web/modules/encryption/data'
-import { ROOT_DIR_ID, TRASH_DIR_ID } from 'drive/constants/config.js'
+import {
+  ROOT_DIR_ID,
+  TRASH_DIR_ID,
+  VAULT_DIR_ID
+} from 'drive/constants/config.js'
+import Passphrase from 'drive/web/modules/encryption/Passphrase'
 
 export const OPEN_FOLDER = 'OPEN_FOLDER'
 export const OPEN_FOLDER_SUCCESS = 'OPEN_FOLDER_SUCCESS'
@@ -69,7 +74,7 @@ export const openTrash = () => {
 }
 
 export const openFolder = folderId => {
-  return async (dispatch, getState) => {
+  return async (dispatch, getState, { client }) => {
     dispatch({
       type: OPEN_FOLDER,
       folderId,
@@ -81,6 +86,18 @@ export const openFolder = folderId => {
       // PB: Pouch Mango queries don't return the total count...
       // and so the fetchMore button would not be displayed unless... see FileList
       const folder = await getAdapter(getState()).getFolder(folderId)
+      const vault = getState().encryption.vault
+      if (!vault.key) {
+        const isVaultChild = await client
+          .collection('io.cozy.files')
+          .isChild(folder._id, folder.dirID, folder.path, VAULT_DIR_ID)
+        if (isVaultChild) {
+          console.log('this is a vault child')
+          // TODO do not open if password vault is incorrect
+          dispatch(showModal(<Passphrase />))
+        }
+      }
+
       return dispatch({
         type: OPEN_FOLDER_SUCCESS,
         folder,

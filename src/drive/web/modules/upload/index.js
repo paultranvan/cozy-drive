@@ -5,9 +5,10 @@ import { hasSharedParent, isShared } from 'sharing/state'
 import { CozyFile } from 'models'
 import UploadQueue from './UploadQueue'
 import { VAULT_DIR_ID } from 'drive/constants/config'
-import { generateAESKey, exportKey, wrapAESKey } from 'drive/web//modules/encryption/keys'
+import { generateAESKey, wrapAESKey } from 'drive/web//modules/encryption/keys'
 import { encryptData } from 'drive/web/modules/encryption/data'
 import { encode as encodeArrayBuffer } from 'base64-arraybuffer'
+import getFolderPath from 'drive/web/modules/navigation/getFolderPath'
 
 export { UploadQueue }
 
@@ -111,11 +112,15 @@ export const processNextFile = (
   try {
     dispatch({ type: UPLOAD_FILE, file })
     const vault = getState().encryption.vault
+    console.log('vault : ', vault)
+    const path = getState().view.displayedFolder.path
+    console.log('path : ', path)
     if (entry && isDirectory) {
-      const newDir = await uploadDirectory(client, entry, dirID, vault)
+      const newDir = await uploadDirectory(client, entry, dirID, path, vault)
       fileUploadedCallback(newDir)
     } else {
-      const uploadedFile = await uploadFile(client, file, dirID, vault)
+      console.log('go upload file with vault ', vault)
+      const uploadedFile = await uploadFile(client, file, dirID, path, vault)
       fileUploadedCallback(uploadedFile)
     }
     dispatch({ type: RECEIVE_UPLOAD_SUCCESS, file })
@@ -165,7 +170,7 @@ export const processNextFile = (
 
 const getFileFromEntry = entry => new Promise(resolve => entry.file(resolve))
 
-const uploadDirectory = async (client, directory, dirID) => {
+const uploadDirectory = async (client, directory, dirID, path, vault) => {
   const newDir = await createFolder(client, directory.name, dirID)
   const dirReader = directory.createReader()
   return new Promise(resolve => {
@@ -173,9 +178,16 @@ const uploadDirectory = async (client, directory, dirID) => {
       for (let i = 0; i < entries.length; i += 1) {
         const entry = entries[i]
         if (entry.isFile) {
-          await uploadFile(client, await getFileFromEntry(entry), newDir.id)
+          console.log('go upload file from dir')
+          await uploadFile(
+            client,
+            await getFileFromEntry(entry),
+            newDir.id,
+            path,
+            vault
+          )
         } else if (entry.isDirectory) {
-          await uploadDirectory(client, entry, newDir.id)
+          await uploadDirectory(client, entry, newDir.id, path, vault)
         }
       }
       resolve(newDir)
@@ -193,8 +205,15 @@ const createFolder = async (client, name, dirID) => {
 
 // TODO handle hierarchy when dirID is a sub-dir of the vault
 // TODO handle multiple uploads (see uploadDirectory)
-const uploadFile = async (client, file, dirID, vault) => {
-  if (dirID === VAULT_DIR_ID) {
+const uploadFile = async (client, file, dirID, path, vault) => {
+  //console.log('path : ', getFolderPath(file.))
+  console.log('upload file : ', path)
+  console.log('vault : ', vault)
+  const isVaultChild = await client
+    .collection('io.cozy.files')
+    .isChild('', dirID, path, VAULT_DIR_ID)
+  console.debug('is child : ', isVaultChild)
+  if (isVaultChild) {
     const vaultKey = vault.key
     const vaultId = vault.id
     // FileReader is needed to read the file before encryption

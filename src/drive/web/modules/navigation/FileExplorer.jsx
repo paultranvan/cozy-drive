@@ -1,11 +1,9 @@
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
+import { compose } from 'redux'
 import { withRouter } from 'react-router'
 import { translate } from 'cozy-ui/react/I18n'
 import SharingProvider from 'sharing'
-import { showModal } from 'react-cozy-helpers'
-import Passphrase from 'drive/web/modules/encryption/Passphrase'
-import { VAULT_DIR_ID } from 'drive/constants/config'
 
 import RealtimeFiles from './RealtimeFiles'
 import {
@@ -92,12 +90,7 @@ const mapDispatchToProps = (dispatch, ownProps) => ({
   fetchRecentFiles: () => dispatch(fetchRecentFiles()),
   fetchMoreFiles: (folderId, skip, limit) =>
     dispatch(fetchMoreFiles(folderId, skip, limit)),
-  fetchFolder: folderId => {
-    // TODO: this should check the hierarchy
-    if (folderId === VAULT_DIR_ID) {
-      dispatch(showModal(<Passphrase />))
-    }
-    // TODO do not open if password vault is incorrect
+  fetchFolder: async folderId => {
     dispatch(openFolder(folderId))
   },
   onFileOpen: (file, availableOffline) => {
@@ -109,9 +102,11 @@ const mapDispatchToProps = (dispatch, ownProps) => ({
   }
 })
 
-export default translate()(
+export default compose(
+  translate(),
   connect(
     mapStateToProps,
     mapDispatchToProps
-  )(withRouter(FileExplorer))
-)
+  ),
+  withRouter
+)(FileExplorer)
