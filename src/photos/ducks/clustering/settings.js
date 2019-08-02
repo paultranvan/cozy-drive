@@ -11,19 +11,19 @@ import {
 } from './consts'
 import { gradientAngle } from 'photos/ducks/clustering/gradient'
 
-export const createSetting = initParameters => {
+export const createSetting = (client, initParameters) => {
   log('info', 'Create setting')
   const defaultSetting = DEFAULT_SETTING
   defaultSetting.parameters[0] = initParameters
   return cozyClient.data.create(DOCTYPE_PHOTOS_SETTINGS, defaultSetting)
 }
 
-export const readSetting = async () => {
-  const settings = await cozyClient.data.findAll(DOCTYPE_PHOTOS_SETTINGS)
-  return settings.find(doc => doc.type === SETTING_TYPE)
+export const readSetting = async client => {
+  const settings = await client.query(client.find(DOCTYPE_PHOTOS_SETTINGS))
+  return settings.data.find(doc => doc.type === SETTING_TYPE)
 }
 
-export const updateSetting = async (oldSetting, newSetting) => {
+export const updateSetting = async (client, oldSetting, newSetting) => {
   return cozyClient.data.update(DOCTYPE_PHOTOS_SETTINGS, oldSetting, newSetting)
 }
 
@@ -81,7 +81,7 @@ const getPhotosPeriod = (params, photos) => {
   return params.period
 }
 
-export const updateParamsPeriod = async (setting, params, photos) => {
+export const updateParamsPeriod = async (client, setting, params, photos) => {
   const newParams = {
     ...params,
     period: getPhotosPeriod(params, photos)
@@ -103,10 +103,10 @@ export const updateParamsPeriod = async (setting, params, photos) => {
     ...setting,
     parameters: parameters
   }
-  return updateSetting(setting, newSetting)
+  return updateSetting(client, setting, newSetting)
 }
 
-export const updateSettingStatus = async (setting, count, lastDate) => {
+export const updateSettingStatus = async (client, setting, count, lastDate) => {
   log('info', `Update setting for last date ${lastDate}`)
   const evaluationCount =
     count > 0 ? setting.evaluationCount + count : setting.evaluationCount

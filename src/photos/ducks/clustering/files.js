@@ -1,32 +1,26 @@
-import { cozyClient, log } from 'cozy-konnector-libs'
+import log from 'cozy-logger'
+
 import { DOCTYPE_FILES, DOCTYPE_ALBUMS } from 'drive/lib/doctypes'
 
 export const getFilesFromDate = async (
-  date,
+  client, date,
   { indexDateField, limit = 0 } = {}
 ) => {
   log('info', `Get files from ${date}`)
   const dateField = indexDateField || 'metadata.datetime'
-  const filesIndex = await cozyClient.data.defineIndex(DOCTYPE_FILES, [
-    dateField,
-    'class',
-    'trashed'
-  ])
-  const selector = {
+
+  const query = client.find(DOCTYPE_FILES).where({
     [dateField]: { $gt: date },
     class: 'image',
     trashed: false
-  }
+  })
+
   // The results are paginated
   let next = true
   let skip = 0
   let files = []
   while (next) {
-    const result = await cozyClient.files.query(filesIndex, {
-      selector: selector,
-      wholeResponse: true,
-      skip: skip
-    })
+    const result = await client.query(query.offset(skip))
     files = files.concat(result.data)
     if (limit && files.length >= limit) {
       next = false
@@ -41,41 +35,24 @@ export const getFilesFromDate = async (
   return files
 }
 
-export const getAllPhotos = async () => {
-  const files = await cozyClient.data.findAll(DOCTYPE_FILES)
-  return files.filter(file => file.class === 'image' && !file.trashed)
-}
+export const getFilesByAutoAlbum = async (client, album) => {
+  let allPhotos = []
+  const query = client
+    .find(DOCTYPE_ALBUMS)
+    .getById(album._id)
+    .include(['photos'])
+  const resp = await client.query(query)
 
-export const getFilesByAutoAlbum = async album => {
-  album._type = DOCTYPE_ALBUMS
-  let files = []
-  let next = true
-  let startDocid = ''
-
-  while (next) {
-    const key = [DOCTYPE_ALBUMS, album._id]
-    const cursor = [key, startDocid]
-    const result = await cozyClient.data.fetchReferencedFiles(
-      album,
-      { cursor },
-      'id'
-    )
-    if (result && result.included) {
-      let included = result.included.map(included => {
-        included.clusterId = album._id
-        return included
-      })
-      // Remove the last element, used as starting point for the next run
-      if (files.length + included.length < result.meta.count) {
-        included = included.slice(0, result.included.length - 1)
-        startDocid = result.included[result.included.length - 1].id
-      } else {
-        next = false
-      }
-      files = files.concat(included)
-    } else {
-      next = false
-    }
+  let data = client.hydrateDocuments(DOCTYPE_ALBUMS, [resp.data])
+  const p = await data[0].photos.data
+  allPhotos = allPhotos.concat(p)
+  while (data[0].photos.hasMore) {
+    await data[0].photos.fetchMore()
+    const fromState = client.getDocumentFromState(DOCTYPE_ALBUMS, album._id)
+    data = client.hydrateDocuments(DOCTYPE_ALBUMS, [fromState])
+    const photos = await data[0].photos.data
+    allPhotos = photos
+    console.log('photos length : ', allPhotos.length)
   }
-  return files
+  return allPhotos
 }
