@@ -7,6 +7,7 @@ import { translate } from 'cozy-ui/react/I18n'
 import { withClient } from 'cozy-client'
 import { Input } from 'cozy-ui/react'
 import { DERIVED_PASSPHRASE_KEY_ID } from './keys'
+import get from 'lodash/get'
 import { decryptVaultEncryptionKey, createVaultEncryptionKey } from './duck'
 
 class Passphrase extends Component {
@@ -21,11 +22,11 @@ class Passphrase extends Component {
   async getEncryptedVault() {
     const { client } = this.props
     const settings = await client.query(
-      client.find('io.cozy.settings').getById('io.cozy.settings.instance')
+      client.get('io.cozy.settings', 'instance')
     )
     let vault
-    if (settings.data.encryption && settings.data.encryption.keys) {
-      for (const entry of settings.data.encryption.keys) {
+    if (get(settings, 'data.attributes.encryption.keys')) {
+      for (const entry of settings.data.attributes.encryption.keys) {
         if (entry.wrappingKey.kid === DERIVED_PASSPHRASE_KEY_ID) {
           vault = entry
           break

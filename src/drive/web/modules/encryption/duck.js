@@ -9,6 +9,7 @@ import {
 } from './keys'
 import { decode as decodeArrayBuffer } from 'base64-arraybuffer'
 import Alerter from 'cozy-ui/react/Alerter'
+import get from 'lodash/get'
 
 export const DECRYPT_VAULT_ENCRYPTION_KEY = 'DECRYPT_ENCRYPTION_KEY'
 export const CREATE_VAULT_ENCRYPTION_KEY = 'CREATE_ENCRYPTION_KEY'
@@ -72,17 +73,26 @@ export const createVaultEncryptionKey = passphrase => {
       DERIVED_PASSPHRASE_KEY_ID
     )
     // Save the wrapped key in settings
-    const settings = await client.query(
-      client.find('io.cozy.settings').getById('io.cozy.settings.instance')
-    )
-    const keys =
-      settings.data.encryption && settings.data.encryption.keys
-        ? [...settings.data.encryption.keys, wrap]
-        : [wrap]
-    const encryption = { ...settings.data.encryption, keys }
-    const newSettings = { ...settings.data, encryption }
 
-    await client.collection('io.cozy.settings').update(newSettings)
+    // We cannot directly query throught cozy-client as the SettingsCollection
+    // will query the protected /settings route
+    const settings = await client
+      .getStackClient()
+      .fetchJSON('GET', '/data/io.cozy.settings/io.cozy.settings.instance')
+
+    const keys = get(settings, 'encryption.keys')
+      ? [...settings.encryption.keys, wrap]
+      : [wrap]
+    const encryption = { ...settings.encryption, keys }
+    const newSettings = { ...settings, encryption }
+
+    await client
+      .getStackClient()
+      .fetchJSON(
+        'PUT',
+        '/data/io.cozy.settings/io.cozy.settings.instance',
+        newSettings
+      )
 
     return dispatch({
       type: CREATE_VAULT_ENCRYPTION_KEY,
