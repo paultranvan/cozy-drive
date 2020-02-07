@@ -10,7 +10,7 @@ export const encodeData = data => {
 }
 
 export const exportKey = async (format, key) => {
-  return window.crypto.subtle.exportKey(format, key)
+  return self.crypto.subtle.exportKey(format, key)
 }
 
 export const importKey = async (
@@ -18,7 +18,7 @@ export const importKey = async (
   keyJWK,
   { algorithm, length, keyUsages } = {}
 ) => {
-  return window.crypto.subtle.importKey(
+  return self.crypto.subtle.importKey(
     format,
     keyJWK,
     { name: algorithm || 'AES-GCM', length: length || 256 },
@@ -38,9 +38,9 @@ export const importKey = async (
 const makeDerivableKey = async (data, { algorithm = 'PBKDF2' } = {}) => {
   const keyData =
     data instanceof CryptoKey
-      ? await window.crypto.subtle.exportKey('raw', data)
+      ? await self.crypto.subtle.exportKey('raw', data)
       : encodeData(data)
-  return window.crypto.subtle.importKey(
+  return self.crypto.subtle.importKey(
     'raw',
     keyData,
     { name: algorithm },
@@ -56,7 +56,7 @@ const slowHashing = async (
   { algorithm, keyLength } = {}
 ) => {
   // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/deriveKey
-  return window.crypto.subtle.deriveKey(
+  return self.crypto.subtle.deriveKey(
     {
       name: keyDerivationAlgorithm || 'PBKDF2',
       salt: saltBuffer,
@@ -115,7 +115,7 @@ export const unwrapAESKey = async (
   { algorithm, length, keyUsages } = {}
 ) => {
   // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/unwrapKey
-  return window.crypto.subtle.unwrapKey(
+  return self.crypto.subtle.unwrapKey(
     'raw',
     wrappedKey,
     wrappingKey,
@@ -141,16 +141,13 @@ export const wrapAESKey = async (
   wrappingKeyId,
   { iv } = {}
 ) => {
-  const keyJwk = await window.crypto.subtle.exportKey('jwk', key)
-  const wrappingKeyJwk = await window.crypto.subtle.exportKey(
-    'jwk',
-    wrappingKey
-  )
+  const keyJwk = await self.crypto.subtle.exportKey('jwk', key)
+  const wrappingKeyJwk = await self.crypto.subtle.exportKey('jwk', wrappingKey)
   // Generate a random key id, based on the current timestamp
   const kid = uuidv1()
 
   // Encrypt the key with AES Key Wrapping
-  const encryptedKey = await window.crypto.subtle.wrapKey(
+  const encryptedKey = await self.crypto.subtle.wrapKey(
     'raw',
     key,
     wrappingKey,
@@ -190,7 +187,7 @@ export const generateAESKey = async ({
   keyUsages
 } = {}) => {
   // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/generateKey
-  return window.crypto.subtle.generateKey(
+  return self.crypto.subtle.generateKey(
     {
       name: algorithm || 'AES-GCM',
       length: keyLength || 256
