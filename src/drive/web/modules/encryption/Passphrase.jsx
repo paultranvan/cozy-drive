@@ -37,7 +37,9 @@ class Passphrase extends Component {
   }
 
   async componentWillMount() {
+    const { dispatch } = this.props
     const encryptedVault = await this.getEncryptedVault()
+    await dispatch(decryptVaultEncryptionKey(encryptedVault, 'cc'))
     this.setState({ encryptedVault })
   }
 
@@ -69,6 +71,8 @@ class Passphrase extends Component {
 
   render() {
     const { t } = this.props
+    return null
+    /*
     return (
       <Modal
         title={t('encryption.passphrase.title')}
@@ -84,7 +88,7 @@ class Passphrase extends Component {
           />
         </ModalContent>
       </Modal>
-    )
+    )*/
   }
 }
 

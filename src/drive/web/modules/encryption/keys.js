@@ -3,6 +3,7 @@ import uuidv1 from 'uuid/v1'
 
 export const DERIVED_PASSPHRASE_KEY_ID = 'io.cozy.derivedkey.passphrase'
 
+
 // Encode a string into ArrayBuffer
 export const encodeData = data => {
   var encoder = new TextEncoder('utf-8')

@@ -9,7 +9,12 @@ import { doUpload } from 'cozy-scanner/dist/ScannerUpload'
 
 import UploadQueue from './UploadQueue'
 import { VAULT_DIR_ID } from 'drive/constants/config'
+import { generateAESKey, wrapAESKey } from 'drive/web//modules/encryption/keys'
+import { encryptData } from 'drive/web/modules/encryption/data'
+import { encode as encodeArrayBuffer } from 'base64-arraybuffer'
 import worker from 'workerize-loader!./worker'
+
+let measures = {}
 
 export { UploadQueue }
 
@@ -117,7 +122,30 @@ export const processNextFile = (
       const newDir = await uploadDirectory(client, entry, dirID, vault)
       fileUploadedCallback(newDir)
     } else {
+      console.log('upload file')
+
+      /*let perfs = {}
+      const measurePerfs = file.name.startsWith('perfs_')
+      if (measurePerfs) {
+        const perfDoc = await client.query(
+          client.get('io.cozy.perfs', 'encryption-worker')
+        )
+        perfs = perfDoc.data
+        if (!perfs) {
+          await client.create('io.cozy.perfs', {
+            _id: 'encryption-worker',
+            measures
+          })
+        } else {
+          measures = perfs.measures
+        }
+      }*/
+
       const uploadedFile = await uploadFile(client, file, dirID, vault)
+      /*      if (measurePerfs) {
+        //console.log('perfs : ', perfs)
+        //await client.save({ ...perfs, measures })
+      }*/
       fileUploadedCallback(uploadedFile)
     }
     dispatch({ type: RECEIVE_UPLOAD_SUCCESS, file })
@@ -174,6 +202,7 @@ const uploadDirectory = async (client, directory, dirID) => {
       for (let i = 0; i < entries.length; i += 1) {
         const entry = entries[i]
         if (entry.isFile) {
+          console.log('upload from dir')
           await uploadFile(client, await getFileFromEntry(entry), newDir.id)
         } else if (entry.isDirectory) {
           await uploadDirectory(client, entry, newDir.id)
@@ -181,6 +210,7 @@ const uploadDirectory = async (client, directory, dirID) => {
       }
       resolve(newDir)
     }
+
     dirReader.readEntries(entriesReader)
   })
 }
@@ -223,13 +253,81 @@ const uploadFile = async (client, file, dirID, vault) => {
       }
     }
   }
-  if (dirID === VAULT_DIR_ID) {
+  let tUpload0
+  //const parentDoc = await client.collection('io.cozy.files').statById(dirID)
+  // FIXME only check 1 level of hierarchy: should use childOf, but need to be fixed (path error)
+  const isInVault =
+    dirID === VAULT_DIR_ID ||
+    (await client.collection('io.cozy.files').isChildOf(dirID, VAULT_DIR_ID))
+  console.debug('is child : ', isInVault)
+  //dirID === VAULT_DIR_ID || parentDoc.data.attributes.dir_id === VAULT_DIR_ID
+  if (isInVault) {
     // FileReader is needed to read the file before encryption
     const fr = new FileReader()
     fr.onload = async () => {
+      const tUpload1 = performance.now()
+      const perfRead = tUpload1 - tUpload0
+      /*console.debug(
+        'Read file : ' + file.name + ' : ' + (tUpload1 - tUpload0) + ' ms'
+      )*/
+
+      const tEnc0 = performance.now()
       const instanceWorker = new worker()
-      const encrypted = await instanceWorker.encryptFile(fr.result, vault)
+      const encrypted = await instanceWorker.encryptFile(
+        fr.result,
+        vault,
+        file.name
+      )
+      //const encrypted = await encryptFile(fr.result, vault)
+
+      const tEnc1 = performance.now()
+      console.debug(
+        'Full encryption ' + file.name + ' : ' + (tEnc1 - tEnc0) + ' ms'
+      )
+      const encryptedFile = encrypted.file
+      const wrap = encrypted.wrappedKey
       const name = 'encrypted_' + file.name
+
+      /*
+      const tEnc0 = performance.now()
+      const data = fr.result
+      // Encrypt the file with a newly generated AES key
+      const tGenKey0 = performance.now()
+      const aesKey = await generateAESKey()
+      const tGenKey1 = performance.now()
+      console.log('Key generation : ' + (tGenKey1 - tGenKey0) + ' ms')
+      var tEncData0 = performance.now()
+      const encryptedFile = await encryptData(aesKey, data)
+      const tEncData1 = performance.now()
+      console.log('File encryption : ' + (tEncData1 - tEncData0) + ' ms')
+      const iv = encodeArrayBuffer(encryptedFile.iv)
+      // Wrap the AES key with the vault key and save it in database
+      const tWrap0 = performance.now()
+      const wrap = await wrapAESKey(aesKey, vault.key, vault.id, { iv })
+      const tWrap1 = performance.now()
+      console.log('Wrap key : ' + (tWrap1 - tWrap0) + ' ms')
+      const name = 'encrypted_' + file.name
+      var tEnc1 = performance.now()
+      console.log('Full encryption : ' + (tEnc1 - tEnc0) + ' ms')*/
+
+      // save result for perfs
+      const measurePerfs = file.name.startsWith('perfs_')
+      if (measurePerfs) {
+        const tokens = file.name.split('_')
+        const idx = tokens.length > 0 ? tokens[tokens.length - 1] : null
+        //measures[idx] = tEnc1 - tEnc0
+        measures[idx] = { encryption: encrypted.perf, read: perfRead }
+        console.debug(measures)
+        const sumEnc = Object.values(measures).reduce(
+          (a, b) => a + b.encryption,
+          0
+        )
+        const sumRead = Object.values(measures).reduce((a, b) => a + b.read, 0)
+        const averageEnc = sumEnc / Object.keys(measures).length
+        const averageRead = sumRead / Object.keys(measures).length
+        console.debug('average encryption : ', averageEnc)
+        console.debug('average read : ', averageRead)
+      }
 
       const resp = await client
         .collection('io.cozy.files')
@@ -239,6 +337,19 @@ const uploadFile = async (client, file, dirID, vault) => {
           metadata: { encryption: encrypted.wrappedKey }
         })
       return resp.data
+    }
+    fr.onloadstart = async () => {
+      console.debug('started')
+      tUpload0 = performance.now()
+    }
+    fr.onprogress = async () => {
+      console.debug('on progress')
+    }
+    fr.onloadend = async () => {
+      /*const tUpload1 = performance.now()
+      console.debug(
+        'Read file : ' + file.name + ' : ' + (tUpload1 - tUpload0) + ' ms'
+      )*/
     }
     fr.readAsArrayBuffer(file)
   } else {

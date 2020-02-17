@@ -165,9 +165,14 @@ const mapDispatchToProps = (dispatch, ownProps) => ({
   fetchRecentFiles: () => dispatch(fetchRecentFiles()),
   fetchMoreFiles: (folderId, skip, limit) =>
     dispatch(fetchMoreFiles(folderId, skip, limit)),
-  fetchFolder: folderId => {
-    // TODO: this should check the hierarchy
-    if (folderId === VAULT_DIR_ID) {
+  fetchFolder: async folderId => {
+    const isInVault =
+      folderId === VAULT_DIR_ID ||
+      (await ownProps.client
+        .collection('io.cozy.files')
+        .isChildOf(folderId, VAULT_DIR_ID))
+    if (isInVault) {
+      console.log('it is vault dir ')
       dispatch(showModal(<Passphrase />))
     }
     // TODO do not open if password vault is incorrect
