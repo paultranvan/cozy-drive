@@ -26,6 +26,12 @@ const encryption = (state = initialState, action) => {
   }
 }
 
+export const getVault = () => {
+  return (dispatch, getState) => {
+    return getState().encryption.vault
+  }
+}
+
 // actions
 export const decryptVaultEncryptionKey = (vault, passphrase) => {
   return async (dispatch, _, { client }) => {

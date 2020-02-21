@@ -172,7 +172,6 @@ const mapDispatchToProps = (dispatch, ownProps) => ({
         .collection('io.cozy.files')
         .isChildOf(folderId, VAULT_DIR_ID))
     if (isInVault) {
-      console.log('it is vault dir ')
       dispatch(showModal(<Passphrase />))
     }
     // TODO do not open if password vault is incorrect

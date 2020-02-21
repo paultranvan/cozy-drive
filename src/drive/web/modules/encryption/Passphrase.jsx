@@ -8,14 +8,19 @@ import { withClient } from 'cozy-client'
 import { Input } from 'cozy-ui/react'
 import { DERIVED_PASSPHRASE_KEY_ID } from './keys'
 import get from 'lodash/get'
-import { decryptVaultEncryptionKey, createVaultEncryptionKey } from './duck'
+import {
+  decryptVaultEncryptionKey,
+  createVaultEncryptionKey,
+  getVault
+} from './duck'
 
 class Passphrase extends Component {
   constructor(props) {
     super(props)
     this.state = {
       passphrase: '',
-      encryptedVault: null
+      encryptedVault: null,
+      vault: null
     }
   }
 
@@ -39,8 +44,8 @@ class Passphrase extends Component {
   async componentWillMount() {
     const { dispatch } = this.props
     const encryptedVault = await this.getEncryptedVault()
-    await dispatch(decryptVaultEncryptionKey(encryptedVault, 'cc'))
-    this.setState({ encryptedVault })
+    const vault = dispatch(getVault())
+    this.setState({ encryptedVault, vault })
   }
 
   handleChange(e) {
@@ -71,8 +76,12 @@ class Passphrase extends Component {
 
   render() {
     const { t } = this.props
-    return null
-    /*
+
+    // Do not ask passphrase if key is available
+    if (get(this.state, 'vault.key')) {
+      return null
+    }
+
     return (
       <Modal
         title={t('encryption.passphrase.title')}
@@ -88,7 +97,7 @@ class Passphrase extends Component {
           />
         </ModalContent>
       </Modal>
-    )*/
+    )
   }
 }
 
