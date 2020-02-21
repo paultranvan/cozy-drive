@@ -45,7 +45,7 @@ const makeDerivableKey = async (data, { algorithm = 'PBKDF2' } = {}) => {
     'raw',
     keyData,
     { name: algorithm },
-    true, //whether the key is extractable
+    false, //whether the key is extractable
     ['deriveKey']
   )
 }
