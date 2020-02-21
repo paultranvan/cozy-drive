@@ -9,9 +9,7 @@ import { doUpload } from 'cozy-scanner/dist/ScannerUpload'
 
 import UploadQueue from './UploadQueue'
 import { VAULT_DIR_ID } from 'drive/constants/config'
-import { generateAESKey, exportKey, wrapAESKey } from 'drive/web//modules/encryption/keys'
-import { encryptData } from 'drive/web/modules/encryption/data'
-import { encode as encodeArrayBuffer } from 'base64-arraybuffer'
+import worker from 'workerize-loader!./worker'
 
 export { UploadQueue }
 
@@ -226,25 +224,19 @@ const uploadFile = async (client, file, dirID, vault) => {
     }
   }
   if (dirID === VAULT_DIR_ID) {
-    const vaultKey = vault.key
-    const vaultId = vault.id
     // FileReader is needed to read the file before encryption
     const fr = new FileReader()
     fr.onload = async () => {
-      const data = fr.result
-      // Encrypt the file with a newly generated AES key
-      const aesKey = await generateAESKey()
-      const encryptedFile = await encryptData(aesKey, data)
-      const iv = encodeArrayBuffer(encryptedFile.iv)
-      // Wrap the AES key with the vault key and save it in database
-      const wrap = await wrapAESKey(aesKey, vaultKey, vaultId, { iv })
+      const instanceWorker = new worker()
+      const encrypted = await instanceWorker.encryptFile(fr.result, vault)
       const name = 'encrypted_' + file.name
+
       const resp = await client
         .collection('io.cozy.files')
-        .createFile(encryptedFile.cipher, {
+        .createFile(encrypted.file.cipher, {
           name,
           dirId: dirID,
-          metadata: { encryption: wrap }
+          metadata: { encryption: encrypted.wrappedKey }
         })
       return resp.data
     }
