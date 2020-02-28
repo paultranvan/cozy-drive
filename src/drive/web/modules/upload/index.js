@@ -254,22 +254,17 @@ const uploadFile = async (client, file, dirID, vault) => {
     }
   }
   let tUpload0
-  //const parentDoc = await client.collection('io.cozy.files').statById(dirID)
-  // FIXME only check 1 level of hierarchy: should use childOf, but need to be fixed (path error)
   const isInVault =
     dirID === VAULT_DIR_ID ||
     (await client.collection('io.cozy.files').isChildOf(dirID, VAULT_DIR_ID))
-  console.debug('is child : ', isInVault)
-  //dirID === VAULT_DIR_ID || parentDoc.data.attributes.dir_id === VAULT_DIR_ID
   if (isInVault) {
     // FileReader is needed to read the file before encryption
     const fr = new FileReader()
     fr.onload = async () => {
       const tUpload1 = performance.now()
-      const perfRead = tUpload1 - tUpload0
-      /*console.debug(
+      console.debug(
         'Read file : ' + file.name + ' : ' + (tUpload1 - tUpload0) + ' ms'
-      )*/
+      )
 
       const tEnc0 = performance.now()
       const instanceWorker = new worker()
@@ -278,39 +273,14 @@ const uploadFile = async (client, file, dirID, vault) => {
         vault,
         file.name
       )
-      //const encrypted = await encryptFile(fr.result, vault)
 
       const tEnc1 = performance.now()
       console.debug(
         'Full encryption ' + file.name + ' : ' + (tEnc1 - tEnc0) + ' ms'
       )
-      const encryptedFile = encrypted.file
-      const wrap = encrypted.wrappedKey
-      const name = 'encrypted_' + file.name
 
+      // Take measures for perfs: useful to get average perfs on multiple uploads
       /*
-      const tEnc0 = performance.now()
-      const data = fr.result
-      // Encrypt the file with a newly generated AES key
-      const tGenKey0 = performance.now()
-      const aesKey = await generateAESKey()
-      const tGenKey1 = performance.now()
-      console.log('Key generation : ' + (tGenKey1 - tGenKey0) + ' ms')
-      var tEncData0 = performance.now()
-      const encryptedFile = await encryptData(aesKey, data)
-      const tEncData1 = performance.now()
-      console.log('File encryption : ' + (tEncData1 - tEncData0) + ' ms')
-      const iv = encodeArrayBuffer(encryptedFile.iv)
-      // Wrap the AES key with the vault key and save it in database
-      const tWrap0 = performance.now()
-      const wrap = await wrapAESKey(aesKey, vault.key, vault.id, { iv })
-      const tWrap1 = performance.now()
-      console.log('Wrap key : ' + (tWrap1 - tWrap0) + ' ms')
-      const name = 'encrypted_' + file.name
-      var tEnc1 = performance.now()
-      console.log('Full encryption : ' + (tEnc1 - tEnc0) + ' ms')*/
-
-      // save result for perfs
       const measurePerfs = file.name.startsWith('perfs_')
       if (measurePerfs) {
         const tokens = file.name.split('_')
@@ -328,7 +298,8 @@ const uploadFile = async (client, file, dirID, vault) => {
         console.debug('average encryption : ', averageEnc)
         console.debug('average read : ', averageRead)
       }
-
+      */
+      const name = 'encrypted_' + file.name
       const resp = await client
         .collection('io.cozy.files')
         .createFile(encrypted.file.cipher, {
@@ -339,18 +310,12 @@ const uploadFile = async (client, file, dirID, vault) => {
       return resp.data
     }
     fr.onloadstart = async () => {
-      console.debug('started')
       tUpload0 = performance.now()
     }
     fr.onprogress = async () => {
       console.debug('on progress')
     }
-    fr.onloadend = async () => {
-      /*const tUpload1 = performance.now()
-      console.debug(
-        'Read file : ' + file.name + ' : ' + (tUpload1 - tUpload0) + ' ms'
-      )*/
-    }
+    fr.onloadend = async () => {}
     fr.readAsArrayBuffer(file)
   } else {
     const resp = await client
