@@ -91,15 +91,24 @@
       "href": "/intents"
     }
   ],
+  "services": {
+    "qualificationMigration": {
+      "type": "node",
+      "file": "services/qualificationMigration/drive.js",
+      "trigger": "@event io.cozy.files:CREATED",
+      "debounce": "1s"
+    }
+  },
   "permissions": {
     "files": {
       "description": "Required to access the files",
       "type": "io.cozy.files",
       "verbs": ["ALL"]
     },
-    "filesversions": {
-      "type": "io.cozy.files.versions",
-      "vebrs": ["ALL"]
+    "otherfiles": {
+      "description": "Required to access files versions and settings",
+      "type": "io.cozy.files.*",
+      "verbs": ["ALL"]
     },
     "apps": {
       "description": "Required by the cozy-bar to display the icons of the apps",
